@@ -1,28 +1,13 @@
 const axios = require('axios');
-const { IA_ENDPOINT, API_KEY } = require('../config');
+const config = require('../config');
 
-module.exports = {
-  name: 'ask',
-  description: 'Pose une question à l’IA',
-  async execute(sock, msg, args) {
+module.exports = async function handleAI(msg, sock) {
+    const text = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
     const from = msg.key.remoteJid;
-    if (!args.length) {
-      return sock.sendMessage(from, { text: 'Utilisation : !ask [question]' });
-    }
-
-    const prompt = args.join(' ');
-
     try {
-      const res = await axios.get(`${IA_ENDPOINT}?prompt=${encodeURIComponent(prompt)}&apiKey=${API_KEY}`, {
-        timeout: 10000,
-        headers: { 'Accept': 'application/json' }
-      });
-
-      const answer = res.data.answer || 'Aucune réponse.';
-      await sock.sendMessage(from, { text: answer });
-
+        const res = await axios.get(`${config.IA_ENDPOINT}${encodeURIComponent(text)}&apiKey=${config.IA_KEY}`);
+        await sock.sendMessage(from, { text: res.data.reply }, { quoted: msg });
     } catch (e) {
-      await sock.sendMessage(from, { text: '❌ Erreur lors de la requête IA.' });
+        await sock.sendMessage(from, { text: 'Erreur IA' }, { quoted: msg });
     }
-  }
 };
