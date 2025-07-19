@@ -1,13 +1,14 @@
 const axios = require('axios')
-const config = require('../config')
 
-module.exports = async function handleAI(msg, sock) {
-  const text = msg.message.conversation || msg.message.extendedTextMessage?.text || ''
-  const from = msg.key.remoteJid
+module.exports = async (msg, sock) => {
+  const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text
+  if (!text) return
+
   try {
-    const res = await axios.get(`${config.IA_ENDPOINT}${encodeURIComponent(text)}&apiKey=${config.IA_KEY}`)
-    await sock.sendMessage(from, { text: res.data.reply }, { quoted: msg })
-  } catch (e) {
-    await sock.sendMessage(from, { text: 'Erreur IA' }, { quoted: msg })
+    const res = await axios.get(`https://messie-flash-api-ia.vercel.app/chat?prompt=${encodeURIComponent(text)}&key=messie12356osango2025jinWoo`)
+    const reply = res.data?.response || "Aucune réponse reçue"
+    await sock.sendMessage(msg.key.remoteJid, { text: reply }, { quoted: msg })
+  } catch {
+    await sock.sendMessage(msg.key.remoteJid, { text: "❌ Erreur IA. Serveur indisponible ou mauvais paramètre." }, { quoted: msg })
   }
 }
