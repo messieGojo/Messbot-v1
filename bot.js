@@ -1,5 +1,4 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
-const makeInMemoryStore = require('@whiskeysockets/baileys/lib/store').makeInMemoryStore;
+const { default: makeWASocket, useMultiFileAuthState, makeInMemoryStore, DisconnectReason } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const P = require('pino');
 
@@ -13,7 +12,7 @@ const startBot = async () => {
     logger: P({ level: 'silent' })
   });
 
-  const store = makeInMemoryStore({ logger: P().child({ level: 'fatal', stream: 'store' }) });
+  const store = makeInMemoryStore({ logger: P().child({ level: 'fatal' }) });
   store.bind(sock.ev);
 
   sock.ev.on('creds.update', saveCreds);
@@ -27,6 +26,8 @@ const startBot = async () => {
       }
     } else if (connection === 'open') {
       console.log('Bot connecté');
+    } else if (update.qr) {
+      console.log('QR CODE :', update.qr);
     }
   });
 
@@ -40,7 +41,6 @@ const startBot = async () => {
     if (message.toLowerCase() === 'ping') {
       await sock.sendMessage(from, { text: 'pong' });
     } else {
-    
       await handleAI(msg, sock);
     }
   });
