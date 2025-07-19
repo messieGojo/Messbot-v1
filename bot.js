@@ -1,21 +1,28 @@
-const { default: makeWASocket, useSingleFileAuthState, DisconnectReason } = require('@adiwajshing/baileys')
-const { Boom } = require('@hapi/boom')
+const { default: makeWASocket, DisconnectReason } = require('@adiwajshing/baileys')
 const pino = require('pino')
 const fs = require('fs')
 const axios = require('axios')
-const path = require('path')
 const config = require('./config')
 
-const { state, saveState } = useSingleFileAuthState('./sessions/auth.json')
+const AUTH_FILE = './sessions/auth.json'
+
+let authState = { creds: {}, keys: {} }
+
+if (fs.existsSync(AUTH_FILE)) {
+  authState = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf-8'))
+}
 
 async function connectBot() {
   const sock = makeWASocket({
     logger: pino({ level: 'silent' }),
     printQRInTerminal: true,
-    auth: state
+    auth: authState
   })
 
-  sock.ev.on('creds.update', saveState)
+  sock.ev.on('creds.update', (creds) => {
+    authState.creds = creds
+    fs.writeFileSync(AUTH_FILE, JSON.stringify(authState, null, 2))
+  })
 
   sock.ev.on('connection.update', (update) => {
     const { connection, lastDisconnect } = update
@@ -27,12 +34,11 @@ async function connectBot() {
     }
   })
 
-  sock.ev.on('messages.upsert', async ({ messages, type }) => {
+  sock.ev.on('messages.upsert', async ({ messages }) => {
     if (!messages || !messages[0]?.message) return
 
     const msg = messages[0]
     const from = msg.key.remoteJid
-    const sender = msg.key.participant || msg.key.remoteJid
     const text = msg.message.conversation || msg.message.extendedTextMessage?.text || ''
 
     if (!text) return
