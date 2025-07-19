@@ -15,12 +15,5 @@
   },
   "engines": {
     "node": ">=16"
-  },
-  "keywords": [
-    "whatsapp",
-    "bot",
-    "baileys"
-  ],
-  "author": "",
-  "license": "ISC"
+  }
 }
