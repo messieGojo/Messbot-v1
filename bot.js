@@ -1,43 +1,44 @@
-const baileys = require('@whiskeysockets/baileys')
-const makeWASocket = baileys.default
-const { useSingleFileAuthState, DisconnectReason } = baileys
-const pino = require('pino')
-const axios = require('axios')
-const config = require('./config')
+const { default: makeWASocket, useMultiFileAuthState, makeInMemoryStore, DisconnectReason } = require("@whiskeysockets/baileys")
+const { Boom } = require("@hapi/boom")
+const P = require("pino")
 
-const { state, saveState } = useSingleFileAuthState('./sessions/auth.json')
+const startBot = async () => {
+  const { state, saveCreds } = await useMultiFileAuthState('./sessions')
 
-async function connectBot() {
   const sock = makeWASocket({
-    logger: pino({ level: 'silent' }),
-    printQRInTerminal: true,
     auth: state,
+    printQRInTerminal: true,
+    logger: P({ level: 'silent' })
   })
 
-  sock.ev.on('creds.update', saveState)
+  const store = makeInMemoryStore({ logger: P().child({ level: 'fatal', stream: 'store' }) })
+  store.bind(sock.ev)
 
-  sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
+  sock.ev.on('creds.update', saveCreds)
+
+  sock.ev.on('connection.update', (update) => {
+    const { connection, lastDisconnect } = update
     if (connection === 'close') {
-      const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut
-      if (shouldReconnect) connectBot()
-      else console.log('Déconnecté (logout).')
+      const shouldReconnect = (lastDisconnect.error = new Boom(lastDisconnect?.error))?.output?.statusCode !== DisconnectReason.loggedOut
+      if (shouldReconnect) {
+        startBot()
+      }
+    } else if (connection === 'open') {
+      console.log('Bot connecté')
     }
-    if (connection === 'open') console.log('BOT CONNECTÉ')
   })
 
   sock.ev.on('messages.upsert', async ({ messages }) => {
-    if (!messages || !messages[0]?.message) return
     const msg = messages[0]
+    if (!msg.message || msg.key.fromMe) return
+
     const from = msg.key.remoteJid
-    const text = msg.message.conversation || msg.message.extendedTextMessage?.text || ''
-    if (!text) return
-    try {
-      const res = await axios.get(`${config.IA_ENDPOINT}${encodeURIComponent(text)}&apiKey=${config.IA_KEY}`)
-      await sock.sendMessage(from, { text: res.data.reply || 'Réponse vide' }, { quoted: msg })
-    } catch {
-      await sock.sendMessage(from, { text: 'Erreur IA' }, { quoted: msg })
+    const message = msg.message.conversation || msg.message.extendedTextMessage?.text || ''
+
+    if (message.toLowerCase() === 'ping') {
+      await sock.sendMessage(from, { text: 'pong' })
     }
   })
 }
 
-connectBot()
+startBot()
