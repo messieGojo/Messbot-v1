@@ -1,4 +1,6 @@
-const { default: makeWASocket, useSingleFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys')
+const baileys = require('@whiskeysockets/baileys')
+const makeWASocket = baileys.default
+const { useSingleFileAuthState, DisconnectReason } = baileys
 const pino = require('pino')
 const fs = require('fs')
 const axios = require('axios')
@@ -19,12 +21,7 @@ async function connectBot() {
     const { connection, lastDisconnect } = update
     if (connection === 'close') {
       const shouldReconnect = (lastDisconnect.error)?.output?.statusCode !== DisconnectReason.loggedOut
-      if (shouldReconnect) {
-        console.log('Tentative de reconnexion...')
-        connectBot()
-      } else {
-        console.log('Déconnecté. Veuillez reconnecter manuellement.')
-      }
+      if (shouldReconnect) connectBot()
     } else if (connection === 'open') {
       console.log('BOT CONNECTÉ')
     }
