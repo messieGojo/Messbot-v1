@@ -1,34 +1,30 @@
-const { default: makeWASocket, DisconnectReason } = require('@adiwajshing/baileys')
+const { default: makeWASocket, useSingleFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys')
 const pino = require('pino')
 const fs = require('fs')
 const axios = require('axios')
 const config = require('./config')
 
-const AUTH_FILE = './sessions/auth.json'
-
-let authState = { creds: {}, keys: {} }
-
-if (fs.existsSync(AUTH_FILE)) {
-  authState = JSON.parse(fs.readFileSync(AUTH_FILE, 'utf-8'))
-}
+const { state, saveState } = useSingleFileAuthState('./sessions/auth.json')
 
 async function connectBot() {
   const sock = makeWASocket({
     logger: pino({ level: 'silent' }),
     printQRInTerminal: true,
-    auth: authState
+    auth: state
   })
 
-  sock.ev.on('creds.update', (creds) => {
-    authState.creds = creds
-    fs.writeFileSync(AUTH_FILE, JSON.stringify(authState, null, 2))
-  })
+  sock.ev.on('creds.update', saveState)
 
   sock.ev.on('connection.update', (update) => {
     const { connection, lastDisconnect } = update
     if (connection === 'close') {
       const shouldReconnect = (lastDisconnect.error)?.output?.statusCode !== DisconnectReason.loggedOut
-      if (shouldReconnect) connectBot()
+      if (shouldReconnect) {
+        console.log('Tentative de reconnexion...')
+        connectBot()
+      } else {
+        console.log('Déconnecté. Veuillez reconnecter manuellement.')
+      }
     } else if (connection === 'open') {
       console.log('BOT CONNECTÉ')
     }
