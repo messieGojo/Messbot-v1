@@ -8,42 +8,40 @@ module.exports = {
 
   execute: async function(msg, sock) {
     try {
-      const text = 
-        msg.message?.conversation || 
-        msg.message?.extendedTextMessage?.text || 
-        '';
-      
+      const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text || '';
       const from = msg.key.remoteJid;
 
       if (!text.trim()) return;
 
-      const apiUrl = `https://messie-flash-api-ia.vercel.app/chat?prompt=${encodeURIComponent(text)}&apiKey=messie12356osango2025jinWoo`;
-      
-      const axiosConfig = {
-        timeout: 10000
-      };
+      const response = await axios.get(
+        `https://messie-flash-api-ia.vercel.app/chat`,
+        {
+          params: {
+            prompt: text,
+            apiKey: 'messie12356osango2025jinWoo'
+          },
+          timeout: 15000
+        }
+      );
 
-      const response = await axios.get(apiUrl, axiosConfig);
-
-      if (response?.data?.result) {
-        await sock.sendMessage(from, { text: response.data.result });
-      } else {
-        await sock.sendMessage(from, {
-          text: 'L\'IA n\'a pas pu générer de réponse valide.'
-        });
+      if (!response.data?.result) {
+        throw new Error('Réponse vide de l\'API');
       }
+
+      await sock.sendMessage(from, { text: response.data.result });
+
     } catch (error) {
-      console.error('Erreur dans la commande AI:', error);
+      console.error('Erreur AI:', error.message);
       
-      let errorMessage = 'Une erreur est survenue lors du traitement de votre demande.';
-      
-      if (error.code === 'ECONNABORTED') {
-        errorMessage = 'La requête a pris trop de temps, veuillez réessayer.';
-      } else if (error.response?.status === 401) {
-        errorMessage = 'Erreur d\'authentification avec l\'API IA.';
-      }
-      
-      await sock.sendMessage(from, { text: errorMessage });
+      const errorMsg = error.response?.status === 401 
+        ? 'Clé API invalide'
+        : error.code === 'ECONNABORTED'
+          ? 'Le serveur met trop de temps à répondre'
+          : error.message.includes('vide')
+            ? 'L\'IA n\'a pas pu générer de réponse'
+            : 'Erreur de connexion au serveur AI';
+
+      await sock.sendMessage(from, { text: errorMsg });
     }
-  },
+  }
 };
