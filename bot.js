@@ -1,6 +1,7 @@
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys')
 const { Boom } = require('@hapi/boom')
 const P = require('pino')
+const qrcode = require('qrcode-terminal')
 const handleAI = require('./commands/ai')
 
 async function startBot() {
@@ -8,8 +9,7 @@ async function startBot() {
 
   const sock = makeWASocket({
     auth: state,
-    logger: P({ level: 'silent' }),
-    printQRInTerminal: true
+    logger: P({ level: 'silent' })
   })
 
   sock.ev.on('creds.update', saveCreds)
@@ -18,7 +18,7 @@ async function startBot() {
     const { connection, lastDisconnect, qr } = update
 
     if (qr) {
-      console.log('QR Code:', qr)
+      qrcode.generate(qr, { small: true })
     }
 
     if (connection === 'close') {
@@ -38,7 +38,6 @@ async function startBot() {
     const msg = messages[0]
     if (!msg.message || msg.key.fromMe) return
 
-  
     if (!msg.key.remoteJid.endsWith('@s.whatsapp.net')) return
 
     await handleAI(msg, sock)
