@@ -1,14 +1,14 @@
 const { default: makeWASocket, useMultiFileAuthState, makeInMemoryStore, DisconnectReason } = require("@whiskeysockets/baileys")
 const { Boom } = require("@hapi/boom")
 const P = require("pino")
-const handleAI = require('./commands/ai')
+const qrcode = require("qrcode-terminal")
+const handleAI = require("./commands/ai")
 
 const startBot = async () => {
   const { state, saveCreds } = await useMultiFileAuthState('./sessions')
 
   const sock = makeWASocket({
     auth: state,
-    printQRInTerminal: true,
     logger: P({ level: 'silent' })
   })
 
@@ -18,7 +18,12 @@ const startBot = async () => {
   sock.ev.on('creds.update', saveCreds)
 
   sock.ev.on('connection.update', (update) => {
-    const { connection, lastDisconnect } = update
+    const { connection, lastDisconnect, qr } = update
+
+    if (qr) {
+      qrcode.generate(qr, { small: true })
+    }
+
     if (connection === 'close') {
       const shouldReconnect = (lastDisconnect.error = new Boom(lastDisconnect?.error))?.output?.statusCode !== DisconnectReason.loggedOut
       if (shouldReconnect) {
@@ -34,6 +39,8 @@ const startBot = async () => {
     if (!msg.message || msg.key.fromMe) return
 
     const from = msg.key.remoteJid
+    if (from.endsWith('@g.us')) return
+
     const message = msg.message.conversation || msg.message.extendedTextMessage?.text || ''
 
     if (message.toLowerCase() === 'ping') {
