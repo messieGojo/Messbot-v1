@@ -1,3 +1,5 @@
-node_modules/
-sessions/
+node_modules
+sessions
 .env
+.DS_Store
+*.log
