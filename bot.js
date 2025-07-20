@@ -4,60 +4,42 @@ const {
   DisconnectReason
 } = require('@whiskeysockets/baileys')
 const { Boom } = require('@hapi/boom')
-const P = require('pino')
 const express = require('express')
+const P = require('pino')
 const ai = require('./commands/ai')
-const fs = require('fs')
-const path = require('path')
-
-const PORT = process.env.PORT || 3000
 
 const app = express()
-app.get('/', (req, res) => {
-  res.send('Bot WhatsApp actif')
-})
-app.listen(PORT, () => {
-  console.log(`Serveur web démarré sur le port ${PORT}`)
-})
+const PORT = process.env.PORT || 3000
 
-let sock
+app.get('/', (req, res) => res.send('Bot actif'))
+app.listen(PORT, () => console.log('Serveur web démarré'))
 
 async function startBot() {
-  const sessionFolder = path.join(__dirname, 'sessions')
-  if (fs.existsSync(sessionFolder)) {
-    fs.rmSync(sessionFolder, { recursive: true, force: true })
-  }
   const { state, saveCreds } = await useMultiFileAuthState('./sessions')
 
-  sock = makeWASocket({
+  const sock = makeWASocket({
     auth: state,
     logger: P({ level: 'silent' }),
-    printPairingCode: true,
-    printQRInTerminal: false
+    printPairingCode: true
   })
 
   sock.ev.on('creds.update', saveCreds)
 
-  sock.ev.on('connection.update', async (update) => {
-    const { connection, lastDisconnect, pairing, qr } = update
-    if (pairing?.code) {
-      console.log('Pairing code:', pairing.code)
-    }
-    if (qr) {
-      console.log('QR code (base64):', qr)
-    }
+  sock.ev.on('connection.update', update => {
+    const { connection, lastDisconnect, pairing } = update
+    if (pairing?.code) console.log('Code d’appairage :', pairing.code)
+
     if (connection === 'close') {
-      const statusCode = (lastDisconnect?.error && new Boom(lastDisconnect.error).output.statusCode) || null
-      if (statusCode === DisconnectReason.loggedOut) {
-        if (fs.existsSync(sessionFolder)) {
-          fs.rmSync(sessionFolder, { recursive: true, force: true })
-        }
+      const code = (lastDisconnect?.error && new Boom(lastDisconnect.error).output.statusCode) || 0
+      if (code !== DisconnectReason.loggedOut) {
+        console.log('Déconnexion. Reconnexion dans 5s...')
+        setTimeout(startBot, 5000)
       } else {
-        setTimeout(() => startBot(), 5000)
+        console.log('Déconnecté définitivement.')
       }
-    } else if (connection === 'open') {
-      console.log('Bot connecté')
     }
+
+    if (connection === 'open') console.log('Bot connecté')
   })
 
   sock.ev.on('messages.upsert', async ({ messages }) => {
@@ -66,8 +48,8 @@ async function startBot() {
     if (!msg.key.remoteJid.endsWith('@s.whatsapp.net') && !msg.key.remoteJid.endsWith('@g.us')) return
     try {
       await ai.execute(msg, sock)
-    } catch (e) {
-      console.error('Erreur lors du traitement du message :', e)
+    } catch (err) {
+      console.error('Erreur message :', err)
     }
   })
 }
