@@ -2,35 +2,41 @@ const axios = require('axios');
 
 module.exports = {
   name: 'ai',
-  description: 'Répond automatiquement à tous les messages',
+  description: 'Répond automatiquement à tous les messages via l\'IA',
   author: 'Messie Osango',
-  version: '1.3.0',
+  version: '1.0.0',
 
-  execute: async function(msg, sock) {
-  
-    if (msg.key.remoteJid.endsWith('@g.us') || msg.key.fromMe) return;
-
-    const text = msg.message?.conversation || msg.message?.extendedTextMessage?.text;
-    if (!text?.trim()) return;
-
+  execute: async function (msg, sock) {
     try {
-      const { data } = await axios.get('https://messie-flash-api-ia.vercel.app/chat', {
-        params: {
-          prompt: text,
-          apiKey: 'messie12356osango2025jinWoo'
-        },
-        timeout: 15000
-      });
+      const text =
+        msg.message?.conversation ||
+        msg.message?.extendedTextMessage?.text || '';
 
-      if (data?.result) {
-        await sock.sendMessage(msg.key.remoteJid, { 
-          text: data.result,
-          mentions: [msg.key.participant || msg.key.remoteJid]
+      const from = msg.key.remoteJid;
+      if (!text.trim()) return;
+
+      const apiUrl = `https://messie-flash-api-ia.vercel.app/chat?prompt=${encodeURIComponent(text)}&apiKey=messie12356osango2025jinWoo`;
+
+      const response = await axios.get(apiUrl, { timeout: 10000 });
+
+      const result = response?.data?.result;
+      if (!result || typeof result !== 'string') {
+        await sock.sendMessage(from, {
+          text: '⚠️ Réponse invalide reçue de l’IA.'
         });
+        return;
       }
+
+      await sock.sendMessage(from, { text: result });
     } catch (error) {
-      console.error('Erreur AI:', error.message);
-    
+      console.error('[AI COMMAND ERROR]', error);
+      let msgErr = '❌ Erreur lors de la requête à l’IA.';
+      if (error.code === 'ECONNABORTED') {
+        msgErr = '⏱️ Temps de réponse trop long.';
+      } else if (error.response?.status === 401) {
+        msgErr = '🔐 Clé API invalide ou non autorisée.';
+      }
+      await sock.sendMessage(msg.key.remoteJid, { text: msgErr });
     }
   }
 };
