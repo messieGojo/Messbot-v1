@@ -20,43 +20,39 @@ app.listen(PORT, () => {
   console.log(`Serveur web démarré sur le port ${PORT}`)
 })
 
-let sock 
+let sock
 
 async function startBot() {
+  const sessionFolder = path.join(__dirname, 'sessions')
+  if (fs.existsSync(sessionFolder)) {
+    fs.rmSync(sessionFolder, { recursive: true, force: true })
+  }
   const { state, saveCreds } = await useMultiFileAuthState('./sessions')
 
   sock = makeWASocket({
     auth: state,
     logger: P({ level: 'silent' }),
-    printPairingCode: false 
+    printPairingCode: true,
+    printQRInTerminal: false
   })
 
   sock.ev.on('creds.update', saveCreds)
 
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect, pairing, qr } = update
-
-    if (qr) {
-      console.log('QR Code (base64):', qr)
-    }
-
     if (pairing?.code) {
       console.log('Pairing code:', pairing.code)
     }
-
+    if (qr) {
+      console.log('QR code (base64):', qr)
+    }
     if (connection === 'close') {
       const statusCode = (lastDisconnect?.error && new Boom(lastDisconnect.error).output.statusCode) || null
-      console.log('Connexion fermée, code:', statusCode)
-
       if (statusCode === DisconnectReason.loggedOut) {
-        console.log('Déconnecté (logged out), suppression des sessions...')
-        const sessionFolder = path.join(__dirname, 'sessions')
         if (fs.existsSync(sessionFolder)) {
           fs.rmSync(sessionFolder, { recursive: true, force: true })
-          console.log('Sessions supprimées. Relance le bot pour un nouvel appairage.')
         }
       } else {
-        console.log('Reconnexion dans 5s...')
         setTimeout(() => startBot(), 5000)
       }
     } else if (connection === 'open') {
