@@ -1,42 +1,44 @@
 const axios = require('axios');
 
+const API_URL = 'https://messie-flash-api-ia.vercel.app/chat?prompt=';
+const API_KEY = 'messie12356osango2025jinWoo';
+
 module.exports = {
   name: 'ai',
-  description: 'Répond automatiquement à tous les messages via l\'IA',
+  version: '1.0',
+  description: 'Commande IA sans mot-clé, répond automatiquement à chaque message.',
   author: 'Messie Osango',
-  version: '1.0.0',
 
   execute: async function (msg, sock) {
+    const text =
+      msg.message?.conversation ||
+      msg.message?.extendedTextMessage?.text || '';
+
+    const from = msg.key.remoteJid;
+    if (!text.trim()) return;
+
     try {
-      const text =
-        msg.message?.conversation ||
-        msg.message?.extendedTextMessage?.text || '';
+      const res = await axios.get(`${API_URL}${encodeURIComponent(text)}&apiKey=${API_KEY}`, {
+        timeout: 10000,
+        headers: { 'Accept': 'application/json' }
+      });
 
-      const from = msg.key.remoteJid;
-      if (!text.trim()) return;
+      let answer = 'Désolé, aucune réponse obtenue.';
 
-      const apiUrl = `https://messie-flash-api-ia.vercel.app/chat?prompt=${encodeURIComponent(text)}&apiKey=messie12356osango2025jinWoo`;
-
-      const response = await axios.get(apiUrl, { timeout: 10000 });
-
-      const result = response?.data?.result;
-      if (!result || typeof result !== 'string') {
-        await sock.sendMessage(from, {
-          text: '⚠️ Réponse invalide reçue de l’IA.'
-        });
-        return;
+      if (res.data?.parts?.[0]?.reponse) {
+        answer = res.data.parts[0].reponse;
+      } else if (res.data?.response) {
+        answer = res.data.response;
+      } else if (res.data?.result) {
+        answer = res.data.result;
       }
 
-      await sock.sendMessage(from, { text: result });
+      await sock.sendMessage(from, { text: answer });
     } catch (error) {
-      console.error('[AI COMMAND ERROR]', error);
-      let msgErr = '❌ Erreur lors de la requête à l’IA.';
-      if (error.code === 'ECONNABORTED') {
-        msgErr = '⏱️ Temps de réponse trop long.';
-      } else if (error.response?.status === 401) {
-        msgErr = '🔐 Clé API invalide ou non autorisée.';
-      }
-      await sock.sendMessage(msg.key.remoteJid, { text: msgErr });
+      console.error('Erreur API IA:', error?.message || error);
+      await sock.sendMessage(from, {
+        text: '❌ Erreur de connexion à l’IA. Veuillez réessayer plus tard.'
+      });
     }
   }
 };
