@@ -8,6 +8,8 @@ yarn-debug.log*
 yarn-error.log*
 
 sessions/
+
+
 .env
 
 .DS_Store
