@@ -3,107 +3,122 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Connexion Bot WhatsApp</title>
+  <title>Connexion WhatsApp - Pairing Code</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      max-width: 600px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 500px;
       margin: 0 auto;
       padding: 20px;
-      background-color: #f5f5f5;
+      background-color: #f0f2f5;
     }
     .container {
-      background-color: white;
+      background: white;
       padding: 25px;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
     h1 {
       color: #075e54;
       text-align: center;
       margin-bottom: 25px;
     }
-    form {
+    .input-group {
       margin-bottom: 20px;
     }
     label {
       display: block;
       margin-bottom: 8px;
-      font-weight: bold;
+      font-weight: 600;
       color: #333;
     }
     input[type="text"] {
       width: 100%;
-      padding: 12px;
-      margin-bottom: 15px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      box-sizing: border-box;
+      padding: 12px 15px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
       font-size: 16px;
+      transition: border 0.3s;
+    }
+    input[type="text"]:focus {
+      border-color: #075e54;
+      outline: none;
     }
     button {
       background-color: #075e54;
       color: white;
-      padding: 12px 20px;
       border: none;
-      border-radius: 6px;
+      padding: 14px 20px;
+      border-radius: 8px;
       cursor: pointer;
       font-size: 16px;
+      font-weight: 600;
       width: 100%;
-      transition: background-color 0.3s;
+      transition: background 0.3s;
     }
     button:hover {
       background-color: #128c7e;
     }
     #status {
+      padding: 15px;
       margin: 20px 0;
-      padding: 15px;
-      border-radius: 6px;
-      text-align: center;
-      font-weight: bold;
-    }
-    #pairingCodeContainer {
-      background-color: #f0f8ff;
-      padding: 15px;
       border-radius: 8px;
-      margin-top: 20px;
+      text-align: center;
+      font-weight: 500;
+    }
+    .status-waiting {
+      background-color: #fff8e1;
+      color: #ff8f00;
+    }
+    .status-success {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+    }
+    .status-error {
+      background-color: #ffebee;
+      color: #c62828;
+    }
+    #pairingContainer {
+      background-color: #e3f2fd;
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 25px;
       display: none;
     }
-    #pairingCodeContainer p {
+    .pairing-header {
+      font-weight: 600;
       margin-top: 0;
-      font-weight: bold;
+      color: #0d47a1;
     }
     .code-wrapper {
       display: flex;
       gap: 10px;
+      margin-top: 10px;
     }
     #pairingCode {
-      flex-grow: 1;
-      padding: 10px;
-      font-size: 16px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      background-color: white;
+      flex: 1;
+      padding: 12px;
+      font-size: 18px;
+      font-weight: bold;
+      text-align: center;
+      border: 2px dashed #90caf9;
+      border-radius: 8px;
+      background: white;
     }
     #copyBtn {
-      background-color: #34b7f1;
-      width: auto;
-      padding: 10px 15px;
+      background-color: #1976d2;
+      padding: 0 20px;
+      white-space: nowrap;
     }
     #copyBtn:hover {
-      background-color: #2a9bd8;
+      background-color: #1565c0;
     }
-    .status-waiting {
-      color: #ff9800;
-      background-color: #fff3e0;
+    .steps {
+      margin-top: 20px;
+      padding-left: 20px;
     }
-    .status-success {
-      color: #4caf50;
-      background-color: #e8f5e9;
-    }
-    .status-error {
-      color: #f44336;
-      background-color: #ffebee;
+    .steps li {
+      margin-bottom: 8px;
     }
   </style>
 </head>
@@ -112,43 +127,59 @@
     <h1>Connexion WhatsApp</h1>
     
     <form id="adminForm">
-      <label for="adminNumber">Numéro administrateur (ex: +243844899201) :</label>
-      <input type="text" id="adminNumber" required autocomplete="off" placeholder="Entrez le numéro avec l'indicatif pays">
-      <button type="submit">Se connecter</button>
+      <div class="input-group">
+        <label for="adminNumber">Votre numéro WhatsApp :</label>
+        <input 
+          type="text" 
+          id="adminNumber" 
+          required 
+          placeholder="Ex: +243844899201"
+          pattern="^\+\d{10,15}$"
+        >
+      </div>
+      <button type="submit">Générer le code</button>
     </form>
 
     <div id="status" class="status-waiting">Prêt à se connecter</div>
     
-    <div id="pairingCodeContainer">
-      <p>Code de jumelage :</p>
+    <div id="pairingContainer">
+      <h3 class="pairing-header">Code de jumelage WhatsApp</h3>
       <div class="code-wrapper">
         <input type="text" id="pairingCode" readonly>
         <button id="copyBtn">Copier</button>
       </div>
+      
+      <ol class="steps">
+        <li>Ouvrez WhatsApp sur votre téléphone</li>
+        <li>Allez dans <strong>Paramètres → Appareils liés</strong></li>
+        <li>Sélectionnez <strong>Lier un appareil</strong></li>
+        <li>Entrez le code ci-dessus</li>
+      </ol>
     </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', () => {
       const socket = io({
-        reconnection: true,
-        reconnectionDelay: 1000,
-        reconnectionAttempts: 5
+        reconnectionDelay: 5000,
+        timeout: 60000
       });
-
+      
       const form = document.getElementById('adminForm');
-      const adminNumberInput = document.getElementById('adminNumber');
-      const statusDiv = document.getElementById('status');
-      const pairingCodeContainer = document.getElementById('pairingCodeContainer');
-      const pairingCodeInput = document.getElementById('pairingCode');
+      const adminNumber = document.getElementById('adminNumber');
+      const status = document.getElementById('status');
+      const pairingContainer = document.getElementById('pairingContainer');
+      const pairingCode = document.getElementById('pairingCode');
       const copyBtn = document.getElementById('copyBtn');
 
+      
       function setStatus(text, type) {
-        statusDiv.textContent = text;
-        statusDiv.className = 'status-' + type;
+        status.textContent = text;
+        status.className = `status-${type}`;
       }
 
+      
       socket.on('connect', () => {
         setStatus('Connecté au serveur', 'success');
       });
@@ -161,52 +192,45 @@
         setStatus('Erreur de connexion au serveur', 'error');
       });
 
-      form.addEventListener('submit', function(e) {
+    
+      form.addEventListener('submit', (e) => {
         e.preventDefault();
-        const number = adminNumberInput.value.trim();
+        const number = adminNumber.value.trim();
         
         if (!number.match(/^\+\d{10,15}$/)) {
-          setStatus('Format de numéro invalide', 'error');
+          setStatus('Format invalide. Ex: +243844899201', 'error');
           return;
         }
 
-        setStatus('Connexion en cours...', 'waiting');
-        pairingCodeContainer.style.display = 'none';
+        setStatus('Génération du code en cours...', 'waiting');
+        pairingContainer.style.display = 'none';
         socket.emit('adminNumber', number);
       });
 
-      socket.on('pairingCode', function(code) {
-        pairingCodeInput.value = code;
-        pairingCodeContainer.style.display = 'block';
-        setStatus('Scannez le QR code ou entrez le code de jumelage dans WhatsApp', 'waiting');
+      
+      socket.on('pairingCode', (code) => {
+        pairingCode.value = code;
+        pairingContainer.style.display = 'block';
+        setStatus('Code généré avec succès', 'success');
       });
 
-      socket.on('connectionStatus', function(status) {
-        if (status === 'connected') {
-          setStatus('Connecté avec succès à WhatsApp', 'success');
-          pairingCodeContainer.style.display = 'none';
-        }
-      });
-
-      socket.on('error', function(message) {
+      
+      socket.on('error', (message) => {
         setStatus('Erreur: ' + message, 'error');
       });
 
-      copyBtn.addEventListener('click', function() {
-        pairingCodeInput.select();
+      
+      copyBtn.addEventListener('click', () => {
+        pairingCode.select();
         document.execCommand('copy');
+        
         const originalText = copyBtn.textContent;
-        copyBtn.textContent = 'Copié!';
-        setTimeout(function() {
+        copyBtn.textContent = 'Copié !';
+        
+        setTimeout(() => {
           copyBtn.textContent = originalText;
         }, 2000);
       });
-
-      setTimeout(function() {
-        if (!socket.connected) {
-          setStatus('Le serveur ne répond pas', 'error');
-        }
-      }, 5000);
     });
   </script>
 </body>
