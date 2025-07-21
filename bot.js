@@ -14,7 +14,7 @@ const app = express()
 const PORT = process.env.PORT || 3000
 
 app.get('/', (req, res) => res.send('Bot actif'))
-app.listen(PORT, () => console.log('Serveur démarré !'))
+app.listen(PORT, () => console.log('Serveur enfin démarré !'))
 
 async function startBot() {
   const { version } = await fetchLatestBaileysVersion()
