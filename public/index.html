@@ -2,18 +2,25 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>MessBot</title>
+  <title>Connexion Bot WhatsApp</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
-    <h1>Connecter le Bot WhatsApp</h1>
-    <form id="admin-form">
-      <input type="text" name="admin" placeholder="Numéro WhatsApp de l'administrateur" required>
+    <h1>Connexion au Bot WhatsApp</h1>
+    <form id="adminForm">
+      <input type="text" id="adminNumber" placeholder="Entrez le numéro admin (+243...)" required />
       <button type="submit">Valider</button>
     </form>
-    <div id="result"></div>
+
+    <div id="codeContainer" style="display: none;">
+      <h2>Code de Pairing :</h2>
+      <div id="pairingCode"></div>
+      <button id="copyButton">Copier</button>
+    </div>
   </div>
+
   <script src="script.js"></script>
 </body>
 </html>
