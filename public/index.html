@@ -2,25 +2,22 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Connexion Bot WhatsApp</title>
+  <title>Connexion WhatsApp</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
-    <h1>Connexion au Bot WhatsApp</h1>
-    <form id="adminForm">
-      <input type="text" id="adminNumber" placeholder="Entrez le numéro admin (+243...)" required />
-      <button type="submit">Valider</button>
-    </form>
-
-    <div id="codeContainer" style="display: none;">
-      <h2>Code de Pairing :</h2>
-      <div id="pairingCode"></div>
-      <button id="copyButton">Copier</button>
+    <h1>Connexion WhatsApp du Bot</h1>
+    <input id="numberInput" type="text" placeholder="Entrez votre numéro WhatsApp">
+    <button id="submitBtn">Valider</button>
+    <div id="pairingSection" style="display: none;">
+      <h3>Code de Pairing</h3>
+      <p id="pairingCode"></p>
+      <button id="copyBtn">Copier</button>
     </div>
   </div>
-
+  <script src="/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
