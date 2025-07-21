@@ -89,8 +89,7 @@
     const pairingCodeInput = document.getElementById('pairingCode');
     const copyBtn = document.getElementById('copyBtn');
 
-    // Vérification de la connexion Socket.IO
-    socket.on('connect', () => {
+        socket.on('connect', () => {
       console.log('Connecté au serveur Socket.IO');
       statusDiv.textContent = 'Prêt à se connecter...';
       statusDiv.style.color = '#333';
