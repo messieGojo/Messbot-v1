@@ -1,69 +1,60 @@
-const {
-  default: makeWASocket,
-  useMultiFileAuthState,
-  DisconnectReason
-} = require('@whiskeysockets/baileys')
-const { Boom } = require('@hapi/boom')
 const express = require('express')
-const path = require('path')
-const bodyParser = require('body-parser')
 const fs = require('fs')
+const http = require('http')
+const path = require('path')
+const { Boom } = require('@hapi/boom')
 const P = require('pino')
-const ai = require('./commands/ai')
-const configPath = './config.js'
+const { default: makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys')
 
 const app = express()
+const server = http.createServer(app)
 const PORT = process.env.PORT || 3000
 
-app.use(bodyParser.urlencoded({ extended: true }))
 app.use(express.static('public'))
+app.use(express.json())
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public/index.html'))
-})
+let ADMIN_NUMBER = null
+let pairCode = null
 
-app.post('/set-admin', async (req, res) => {
-  const admin = req.body.admin
-  const content = `module.exports = {\n  OWNER: '${admin}',\n  BOT: ''\n}`
-  fs.writeFileSync(configPath, content)
-  const code = await startBot()
-  res.send(code)
-})
+app.post('/admin', async (req, res) => {
+  const { number } = req.body
+  if (!number || !number.startsWith('+')) return res.status(400).json({ error: 'Numéro invalide' })
 
-app.listen(PORT, () => console.log('Serveur démarré'))
+  ADMIN_NUMBER = number
+  fs.writeFileSync('./config.js', `module.exports = { adminNumber: "${number}" }`)
 
-async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState('./sessions')
+  const { version } = await fetchLatestBaileysVersion()
+
   const sock = makeWASocket({
-    auth: state,
+    version,
     logger: P({ level: 'silent' }),
-    printQRInTerminal: false
+    printQRInTerminal: false,
+    auth: state,
+    browser: ['MessBot', 'Chrome', '1.0.0'],
+    syncFullHistory: false,
+    generateHighQualityLinkPreview: false,
+    markOnlineOnConnect: true,
+    defaultQueryTimeoutMs: undefined,
+    pairingCode: number
   })
 
-  let pairCode = ''
+  sock.ev.on('connection.update', ({ pairingCode: code, connection }) => {
+    if (code && !pairCode) {
+      pairCode = code
+      res.json({ pairingCode: code })
+    }
+  })
 
   sock.ev.on('creds.update', saveCreds)
+})
 
-  sock.ev.on('connection.update', async update => {
-    const { connection, lastDisconnect, pairingCode } = update
-    if (pairingCode) {
-      pairCode = pairingCode
-    }
-    if (connection === 'close') {
-      const code = (lastDisconnect?.error && new Boom(lastDisconnect.error).output.statusCode) || 0
-      if (code !== DisconnectReason.loggedOut) setTimeout(startBot, 5000)
-    }
-  })
 
-  sock.ev.on('messages.upsert', async ({ messages }) => {
-    const msg = messages[0]
-    if (!msg.message || msg.key.fromMe) return
-    if (!msg.key.remoteJid.endsWith('@s.whatsapp.net') && !msg.key.remoteJid.endsWith('@g.us')) return
-    try {
-      await ai.execute(msg, sock)
-    } catch {}
-  })
+app.get('/paircode', (req, res) => {
+  if (!pairCode) return res.status(404).json({ error: 'Code non encore généré' })
+  res.json({ pairingCode: pairCode })
+})
 
-  await new Promise(resolve => setTimeout(resolve, 5000))
-  return pairCode ? `<h2>Code de Pairing : <input value="${pairCode}" readonly id="code"><button onclick="copyCode()">Copier</button><script>function copyCode(){navigator.clipboard.writeText(document.getElementById('code').value)}</script>` : '<h2>Erreur : aucun code de pairing généré.</h2>'
-}
+server.listen(PORT, () => {
+  console.log('Serveur enfin démarré !')
+})
