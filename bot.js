@@ -1,14 +1,15 @@
-const {
-  default: makeWASocket,
-  useMultiFileAuthState,
-  DisconnectReason
-} = require('@whiskeysockets/baileys');
-const { Boom } = require('@hapi/boom');
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const pino = require('pino');
-const path = require('path');
+import { makeWASocket, useMultiFileAuthState, DisconnectReason } from '@whiskeysockets/baileys';
+import Boom from '@hapi/boom';
+import express from 'express';
+import http from 'http';
+import { Server } from 'socket.io';
+import pino from 'pino';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import ai from './commands/ai.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = http.createServer(app);
@@ -36,11 +37,9 @@ async function startBot(adminNumber, socket) {
     sock = makeWASocket({
       auth: state,
       logger: pino({ level: 'silent' }),
-      shouldSyncHistoryMessage: false,
-      generateHighQualityLinkPreview: false,
       syncFullHistory: false,
       connectTimeoutMs: 60000,
-      browser: ['Chrome (Linux)', '', ''] 
+      browser: ['Chrome (Linux)', '', '']
     });
 
     sock.ev.on('connection.update', (update) => {
@@ -57,6 +56,12 @@ async function startBot(adminNumber, socket) {
           setTimeout(() => startBot(adminNumber, socket), 5000);
         }
       }
+    });
+
+    sock.ev.on('messages.upsert', async ({ messages }) => {
+      const msg = messages[0];
+      if (!msg?.message || msg.key.fromMe) return;
+      await ai.execute(msg, sock);
     });
 
   } catch (error) {
