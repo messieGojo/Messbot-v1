@@ -9,10 +9,10 @@ const P = require('pino')
 const ai = require('./commands/ai')
 
 const app = express()
-const PORT = process.env.PORT || 3000
+const PORT = process.env.PORT || 3001 
 
 app.get('/', (req, res) => res.send('Bot actif'))
-app.listen(PORT, () => console.log('Serveur enfin démarré !'))
+app.listen(PORT, () => console.log(`Serveur enfin démarré sur le port ${PORT} !`))
 
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState('./sessions')
@@ -29,7 +29,7 @@ async function startBot() {
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect, pairingCode, isNewLogin } = update
 
-    if (pairingCode) {  
+    if (pairingCode) {
       console.log(`✅ Ton code de pairing est : *${pairingCode}*`)
     }
 
