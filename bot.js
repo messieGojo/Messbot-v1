@@ -1,44 +1,58 @@
 const {
   default: makeWASocket,
   useMultiFileAuthState,
-  fetchLatestBaileysVersion,
   DisconnectReason
 } = require('@whiskeysockets/baileys')
 const { Boom } = require('@hapi/boom')
 const express = require('express')
+const path = require('path')
+const bodyParser = require('body-parser')
+const fs = require('fs')
 const P = require('pino')
 const ai = require('./commands/ai')
+const configPath = './config.js'
 
 const app = express()
 const PORT = process.env.PORT || 3000
 
-app.get('/', (req, res) => res.send('Bot actif'))
-app.listen(PORT, () => console.log('Serveur enfin démarré!'))
+app.use(bodyParser.urlencoded({ extended: true }))
+app.use(express.static('public'))
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/index.html'))
+})
+
+app.post('/set-admin', async (req, res) => {
+  const admin = req.body.admin
+  const content = `module.exports = {\n  OWNER: '${admin}',\n  BOT: ''\n}`
+  fs.writeFileSync(configPath, content)
+  const code = await startBot()
+  res.send(code)
+})
+
+app.listen(PORT, () => console.log('Serveur démarré'))
 
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState('./sessions')
-  const { version } = await fetchLatestBaileysVersion()
-
   const sock = makeWASocket({
-    version,
     auth: state,
     logger: P({ level: 'silent' }),
-    printQRInTerminal: false,
-    browser: ['MessBot', 'Chrome', '1.0.0']
+    printQRInTerminal: false
   })
+
+  let pairCode = ''
 
   sock.ev.on('creds.update', saveCreds)
 
-  sock.ev.on('connection.update', async ({ connection, lastDisconnect }) => {
-    const code = (lastDisconnect?.error && new Boom(lastDisconnect.error).output.statusCode) || 0
-    if (connection === 'close' && code !== DisconnectReason.loggedOut) {
-      setTimeout(startBot, 1000)
+  sock.ev.on('connection.update', async update => {
+    const { connection, lastDisconnect, pairingCode } = update
+    if (pairingCode) {
+      pairCode = pairingCode
     }
-    if (connection === 'open') console.log('Bot connecté')
-  })
-
-  sock.ev.on('connection.set', async ({ pairingCode }) => {
-    if (pairingCode) console.log('✅ Ton code de pairing est : *' + pairingCode + '*')
+    if (connection === 'close') {
+      const code = (lastDisconnect?.error && new Boom(lastDisconnect.error).output.statusCode) || 0
+      if (code !== DisconnectReason.loggedOut) setTimeout(startBot, 5000)
+    }
   })
 
   sock.ev.on('messages.upsert', async ({ messages }) => {
@@ -49,6 +63,7 @@ async function startBot() {
       await ai.execute(msg, sock)
     } catch {}
   })
-}
 
-startBot()
+  await new Promise(resolve => setTimeout(resolve, 5000))
+  return pairCode ? `<h2>Code de Pairing : <input value="${pairCode}" readonly id="code"><button onclick="copyCode()">Copier</button><script>function copyCode(){navigator.clipboard.writeText(document.getElementById('code').value)}</script>` : '<h2>Erreur : aucun code de pairing généré.</h2>'
+}
