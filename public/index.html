@@ -1,66 +1,133 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Connexion Bot WhatsApp</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexion Bot WhatsApp</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    form {
+      background: #f9f9f9;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    #status {
+      margin: 20px 0;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    #pairingCodeContainer {
+      background: #f0f0f0;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+    #copyBtn {
+      background-color: #2196F3;
+      margin-left: 10px;
+    }
+    #copyBtn:hover {
+      background-color: #0b7dda;
+    }
+  </style>
 </head>
 <body>
-<form id="adminForm">
-  <label for="adminNumber">Numéro administrateur (ex: +243844899201) :</label><br />
-  <input type="text" id="adminNumber" required autocomplete="off" /><br />
-  <button type="submit">Valider</button>
-</form>
+  <form id="adminForm">
+    <label for="adminNumber">Numéro administrateur (ex: +243844899201) :</label>
+    <input type="text" id="adminNumber" required autocomplete="off" placeholder="Entrez le numéro avec l'indicatif pays">
+    <button type="submit">Valider</button>
+  </form>
 
-<div id="status"></div>
-<div id="pairingCodeContainer" style="display:none;">
-  <p>Pairing Code :</p>
-  <input type="text" id="pairingCode" readonly />
-  <button id="copyBtn">Copier</button>
-</div>
+  <div id="status"></div>
+  <div id="pairingCodeContainer" style="display:none;">
+    <p>Code de jumelage :</p>
+    <div style="display: flex;">
+      <input type="text" id="pairingCode" readonly style="flex-grow: 1;">
+      <button id="copyBtn">Copier</button>
+    </div>
+  </div>
 
-<script src="/socket.io/socket.io.js"></script>
-<script>
-  const socket = io();
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const socket = io();
+      const form = document.getElementById('adminForm');
+      const adminNumberInput = document.getElementById('adminNumber');
+      const statusDiv = document.getElementById('status');
+      const pairingCodeContainer = document.getElementById('pairingCodeContainer');
+      const pairingCodeInput = document.getElementById('pairingCode');
+      const copyBtn = document.getElementById('copyBtn');
 
-  const form = document.getElementById('adminForm');
-  const adminNumberInput = document.getElementById('adminNumber');
-  const statusDiv = document.getElementById('status');
-  const pairingCodeContainer = document.getElementById('pairingCodeContainer');
-  const pairingCodeInput = document.getElementById('pairingCode');
-  const copyBtn = document.getElementById('copyBtn');
+      form.addEventListener('submit', e => {
+        e.preventDefault();
+        const number = adminNumberInput.value.trim();
+        if (number) {
+          statusDiv.textContent = 'Connexion en cours...';
+          statusDiv.style.color = '#333';
+          pairingCodeContainer.style.display = 'none';
+          socket.emit('adminNumber', number);
+        }
+      });
 
-  form.addEventListener('submit', e => {
-    e.preventDefault();
-    const number = adminNumberInput.value.trim();
-    if (number) {
-      statusDiv.textContent = 'Connexion en cours...';
-      pairingCodeContainer.style.display = 'none';
-      socket.emit('adminNumber', number);
-    }
-  });
+      socket.on('pairingCode', code => {
+        pairingCodeInput.value = code;
+        pairingCodeContainer.style.display = 'block';
+        statusDiv.textContent = 'Veuillez utiliser ce code pour connecter le bot.';
+      });
 
-  socket.on('pairingCode', code => {
-    pairingCodeInput.value = code;
-    pairingCodeContainer.style.display = 'block';
-    statusDiv.textContent = 'Veuillez scanner ce code pour connecter le bot.';
-  });
+      socket.on('connectionStatus', status => {
+        if (status === 'connected') {
+          statusDiv.textContent = 'Bot connecté avec succès !';
+          statusDiv.style.color = 'green';
+          pairingCodeContainer.style.display = 'none';
+        }
+      });
 
-  socket.on('connectionStatus', status => {
-    if (status === 'connected') {
-      statusDiv.textContent = 'Bot connecté avec succès.';
-      pairingCodeContainer.style.display = 'none';
-    }
-  });
+      socket.on('error', message => {
+        statusDiv.textContent = 'Erreur : ' + message;
+        statusDiv.style.color = 'red';
+      });
 
-  socket.on('error', message => {
-    statusDiv.textContent = 'Erreur : ' + message;
-  });
-
-  copyBtn.addEventListener('click', () => {
-    pairingCodeInput.select();
-    document.execCommand('copy');
-  });
-</script>
+      copyBtn.addEventListener('click', () => {
+        pairingCodeInput.select();
+        document.execCommand('copy');
+        copyBtn.textContent = 'Copié !';
+        setTimeout(() => {
+          copyBtn.textContent = 'Copier';
+        }, 2000);
+      });
+    });
+  </script>
 </body>
 </html>
