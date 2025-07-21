@@ -1,8 +1,6 @@
 const {
   default: makeWASocket,
   useMultiFileAuthState,
-  fetchLatestBaileysVersion,
-  makeCacheableSignalKeyStore,
   DisconnectReason
 } = require('@whiskeysockets/baileys')
 const { Boom } = require('@hapi/boom')
@@ -17,32 +15,34 @@ app.get('/', (req, res) => res.send('Bot actif'))
 app.listen(PORT, () => console.log('Serveur enfin démarré !'))
 
 async function startBot() {
-  const { version } = await fetchLatestBaileysVersion()
   const { state, saveCreds } = await useMultiFileAuthState('./sessions')
 
   const sock = makeWASocket({
-    version,
+    auth: state,
     logger: P({ level: 'silent' }),
-    auth: {
-      creds: state.creds,
-      keys: makeCacheableSignalKeyStore(state.keys, P({ level: 'silent' }))
-    },
-    browser: ['Ubuntu', 'Chrome', '20.0.04'],
-    syncFullHistory: false,
-    printQRInTerminal: false,
-    generateHighQualityLinkPreview: true
+    browser: ['PairBot', 'Chrome', '1.0'],
+    printQRInTerminal: false
   })
 
   sock.ev.on('creds.update', saveCreds)
 
-  sock.ev.on('connection.update', update => {
-    const { connection, lastDisconnect, pairingCode } = update
-    if (pairingCode) console.log('✅ Ton code de pairing est : *' + pairingCode + '*')
-    if (connection === 'close') {
-      const code = new Boom(lastDisconnect?.error).output.statusCode
-      if (code !== DisconnectReason.loggedOut) setTimeout(startBot, 5000)
+  sock.ev.on('connection.update', async (update) => {
+    const { connection, lastDisconnect, pairingCode, isNewLogin } = update
+
+    if (pairingCode) {  
+      console.log(`✅ Ton code de pairing est : *${pairingCode}*`)
     }
-    if (connection === 'open') console.log('Bot connecté')
+
+    if (connection === 'close') {
+      const code = (lastDisconnect?.error && new Boom(lastDisconnect.error).output.statusCode) || 0
+      if (code !== DisconnectReason.loggedOut) {
+        setTimeout(startBot, 3000)
+      }
+    }
+
+    if (connection === 'open') {
+      console.log('✅ Bot connecté avec succès.')
+    }
   })
 
   sock.ev.on('messages.upsert', async ({ messages }) => {
