@@ -9,7 +9,6 @@ const http = require('http');
 const { Server } = require('socket.io');
 const pino = require('pino');
 const path = require('path');
-const ai = require('./commands/ai');
 
 const app = express();
 const server = http.createServer(app);
@@ -25,56 +24,31 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-const PORT = process.env.PORT || 3000;
-
+const PORT = process.env.PORT || 10000;
 let sock = null;
-let saveCreds = null;
-
-io.on('connection', (socket) => {
-  socket.on('adminNumber', async (number) => {
-    if (!number.match(/^\+\d{10,15}$/)) {
-      socket.emit('error', 'Format de numéro invalide');
-      return;
-    }
-
-    if (sock) {
-      try {
-        await sock.logout();
-      } catch (error) {}
-      sock.ev.removeAllListeners();
-      sock = null;
-      saveCreds = null;
-    }
-
-    startBot(number, socket);
-  });
-});
 
 async function startBot(adminNumber, socket) {
   try {
-    const { state, saveCreds: save } = await useMultiFileAuthState(
+    const { state } = await useMultiFileAuthState(
       path.join(__dirname, 'sessions', adminNumber.replace('+', ''))
     );
-    saveCreds = save;
 
     sock = makeWASocket({
       auth: state,
       logger: pino({ level: 'silent' }),
-      printQRInTerminal: true,
-      printPairingCode: true
+      shouldSyncHistoryMessage: false,
+      generateHighQualityLinkPreview: false,
+      syncFullHistory: false,
+      connectTimeoutMs: 60000,
+      browser: ['Chrome (Linux)', '', ''] 
     });
 
-    sock.ev.on('creds.update', saveCreds);
-
     sock.ev.on('connection.update', (update) => {
-      const { connection, lastDisconnect, qr, pairing } = update;
-
-      if (qr) {
-        socket.emit('qrCode', qr);
-      }
-
-      if (pairing?.code) {
-        socket.emit('pairingCode', pairing.code);
+      const { connection, lastDisconnect, pairingCode } = update;
+      
+      if (pairingCode) {
+        console.log('PAIRING CODE:', pairingCode);
+        socket.emit('pairingCode', pairingCode);
       }
 
       if (connection === 'close') {
@@ -83,27 +57,28 @@ async function startBot(adminNumber, socket) {
           setTimeout(() => startBot(adminNumber, socket), 5000);
         }
       }
-
-      if (connection === 'open') {
-        socket.emit('connectionStatus', 'connected');
-      }
-    });
-
-    sock.ev.on('messages.upsert', async ({ messages }) => {
-      try {
-        const msg = messages[0];
-        if (!msg?.message || msg.key.fromMe) return;
-        const jid = msg.key.remoteJid;
-        if (!jid.endsWith('@s.whatsapp.net') && !jid.endsWith('@g.us')) return;
-        await ai.execute(msg, sock);
-      } catch (error) {}
     });
 
   } catch (error) {
-    socket.emit('error', error.message);
+    console.error('ERREUR:', error);
+    socket.emit('error', 'Échec de connexion');
+    setTimeout(() => startBot(adminNumber, socket), 10000);
   }
 }
 
+io.on('connection', (socket) => {
+  socket.on('adminNumber', (number) => {
+    if (!number.match(/^\+\d{10,15}$/)) {
+      return socket.emit('error', 'Format: +243844899201');
+    }
+    if (sock) {
+      sock.end(undefined);
+      sock = null;
+    }
+    startBot(number, socket);
+  });
+});
+
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Serveur actif sur le port ${PORT}`);
 });
