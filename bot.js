@@ -1,60 +1,79 @@
-const express = require('express')
-const fs = require('fs')
-const http = require('http')
-const path = require('path')
+const {
+  default: makeWASocket,
+  useMultiFileAuthState,
+  DisconnectReason
+} = require('@whiskeysockets/baileys')
 const { Boom } = require('@hapi/boom')
+const express = require('express')
+const http = require('http')
+const { Server } = require('socket.io')
 const P = require('pino')
-const { default: makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys')
+const ai = require('./commands/ai')
 
 const app = express()
 const server = http.createServer(app)
-const PORT = process.env.PORT || 3000
+const io = new Server(server)
 
 app.use(express.static('public'))
-app.use(express.json())
 
-let ADMIN_NUMBER = null
-let pairCode = null
+app.get('/', (req, res) => res.sendFile(__dirname + '/public/index.html'))
 
-app.post('/admin', async (req, res) => {
-  const { number } = req.body
-  if (!number || !number.startsWith('+')) return res.status(400).json({ error: 'Numéro invalide' })
+const PORT = process.env.PORT || 3000
 
-  ADMIN_NUMBER = number
-  fs.writeFileSync('./config.js', `module.exports = { adminNumber: "${number}" }`)
+let sock = null
+let saveCreds = null
 
-  const { state, saveCreds } = await useMultiFileAuthState('./sessions')
-  const { version } = await fetchLatestBaileysVersion()
-
-  const sock = makeWASocket({
-    version,
-    logger: P({ level: 'silent' }),
-    printQRInTerminal: false,
-    auth: state,
-    browser: ['MessBot', 'Chrome', '1.0.0'],
-    syncFullHistory: false,
-    generateHighQualityLinkPreview: false,
-    markOnlineOnConnect: true,
-    defaultQueryTimeoutMs: undefined,
-    pairingCode: number
-  })
-
-  sock.ev.on('connection.update', ({ pairingCode: code, connection }) => {
-    if (code && !pairCode) {
-      pairCode = code
-      res.json({ pairingCode: code })
+io.on('connection', (socket) => {
+  socket.on('adminNumber', async (number) => {
+    if (sock) {
+      try {
+        await sock.logout()
+      } catch {}
+      sock = null
     }
+    startBot(number, socket)
+  })
+})
+
+async function startBot(adminNumber, socket) {
+  const { state, saveCreds: save } = await useMultiFileAuthState('./sessions')
+  saveCreds = save
+
+  sock = makeWASocket({
+    auth: state,
+    logger: P({ level: 'silent' }),
+    printPairingCode: false
   })
 
   sock.ev.on('creds.update', saveCreds)
-})
 
+  sock.ev.on('connection.update', update => {
+    const { connection, lastDisconnect, pairing } = update
 
-app.get('/paircode', (req, res) => {
-  if (!pairCode) return res.status(404).json({ error: 'Code non encore généré' })
-  res.json({ pairingCode: pairCode })
-})
+    if (pairing?.code) {
+      socket.emit('pairingCode', pairing.code)
+    }
 
-server.listen(PORT, () => {
-  console.log('Serveur enfin démarré !')
-})
+    if (connection === 'close') {
+      const statusCode = (lastDisconnect?.error && new Boom(lastDisconnect.error).output.statusCode) || 0
+      if (statusCode !== DisconnectReason.loggedOut) {
+        setTimeout(() => startBot(adminNumber, socket), 5000)
+      }
+    }
+
+    if (connection === 'open') {
+      console.log('Bot connecté en tant que:', adminNumber)
+    }
+  })
+
+  sock.ev.on('messages.upsert', async ({ messages }) => {
+    const msg = messages[0]
+    if (!msg.message || msg.key.fromMe) return
+    if (!msg.key.remoteJid.endsWith('@s.whatsapp.net') && !msg.key.remoteJid.endsWith('@g.us')) return
+    try {
+      await ai.execute(msg, sock)
+    } catch {}
+  })
+}
+
+server.listen(PORT, () => console.log(`Serveur démarré sur le port ${PORT}`))
