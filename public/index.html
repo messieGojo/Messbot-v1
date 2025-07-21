@@ -79,55 +79,93 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const socket = io();
-      const form = document.getElementById('adminForm');
-      const adminNumberInput = document.getElementById('adminNumber');
-      const statusDiv = document.getElementById('status');
-      const pairingCodeContainer = document.getElementById('pairingCodeContainer');
-      const pairingCodeInput = document.getElementById('pairingCode');
-      const copyBtn = document.getElementById('copyBtn');
+ <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const socket = io();
+    const form = document.getElementById('adminForm');
+    const adminNumberInput = document.getElementById('adminNumber');
+    const statusDiv = document.getElementById('status');
+    const pairingCodeContainer = document.getElementById('pairingCodeContainer');
+    const pairingCodeInput = document.getElementById('pairingCode');
+    const copyBtn = document.getElementById('copyBtn');
 
-      form.addEventListener('submit', e => {
-        e.preventDefault();
-        const number = adminNumberInput.value.trim();
-        if (number) {
-          statusDiv.textContent = 'Connexion en cours...';
-          statusDiv.style.color = '#333';
-          pairingCodeContainer.style.display = 'none';
-          socket.emit('adminNumber', number);
-        }
-      });
-
-      socket.on('pairingCode', code => {
-        pairingCodeInput.value = code;
-        pairingCodeContainer.style.display = 'block';
-        statusDiv.textContent = 'Veuillez utiliser ce code pour connecter le bot.';
-      });
-
-      socket.on('connectionStatus', status => {
-        if (status === 'connected') {
-          statusDiv.textContent = 'Bot connecté avec succès !';
-          statusDiv.style.color = 'green';
-          pairingCodeContainer.style.display = 'none';
-        }
-      });
-
-      socket.on('error', message => {
-        statusDiv.textContent = 'Erreur : ' + message;
-        statusDiv.style.color = 'red';
-      });
-
-      copyBtn.addEventListener('click', () => {
-        pairingCodeInput.select();
-        document.execCommand('copy');
-        copyBtn.textContent = 'Copié !';
-        setTimeout(() => {
-          copyBtn.textContent = 'Copier';
-        }, 2000);
-      });
+    // Vérification de la connexion Socket.IO
+    socket.on('connect', () => {
+      console.log('Connecté au serveur Socket.IO');
+      statusDiv.textContent = 'Prêt à se connecter...';
+      statusDiv.style.color = '#333';
     });
-  </script>
+
+    socket.on('disconnect', () => {
+      statusDiv.textContent = 'Déconnecté du serveur. Veuillez rafraîchir la page.';
+      statusDiv.style.color = 'red';
+    });
+
+    socket.on('connect_error', (err) => {
+      console.error('Erreur de connexion:', err);
+      statusDiv.textContent = 'Erreur de connexion au serveur. Veuillez réessayer.';
+      statusDiv.style.color = 'red';
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const number = adminNumberInput.value.trim();
+      
+      if (!number) return;
+      
+      statusDiv.textContent = 'Connexion en cours...';
+      statusDiv.style.color = '#333';
+      pairingCodeContainer.style.display = 'none';
+      
+      try {
+        socket.emit('adminNumber', number);
+        
+          const timeout = setTimeout(() => {
+          statusDiv.textContent = 'Délai dépassé. Le serveur ne répond pas.';
+          statusDiv.style.color = 'red';
+        }, 30000);
+        
+           socket.once('pairingCode', () => clearTimeout(timeout));
+        socket.once('connectionStatus', () => clearTimeout(timeout));
+        socket.once('error', () => clearTimeout(timeout));
+        
+      } catch (err) {
+        console.error('Erreur:', err);
+        statusDiv.textContent = 'Erreur lors de la tentative de connexion';
+        statusDiv.style.color = 'red';
+      }
+    });
+
+    
+    socket.on('pairingCode', code => {
+      pairingCodeInput.value = code;
+      pairingCodeContainer.style.display = 'block';
+      statusDiv.textContent = 'Veuillez utiliser ce code pour connecter le bot dans WhatsApp.';
+      statusDiv.style.color = '#333';
+    });
+
+    socket.on('connectionStatus', status => {
+      if (status === 'connected') {
+        statusDiv.textContent = 'Bot connecté avec succès !';
+        statusDiv.style.color = 'green';
+        pairingCodeContainer.style.display = 'none';
+      }
+    });
+
+    socket.on('error', message => {
+      statusDiv.textContent = 'Erreur : ' + message;
+      statusDiv.style.color = 'red';
+    });
+
+    copyBtn.addEventListener('click', () => {
+      pairingCodeInput.select();
+      document.execCommand('copy');
+      copyBtn.textContent = 'Copié !';
+      setTimeout(() => {
+        copyBtn.textContent = 'Copier';
+      }, 2000);
+    });
+  });
+ </script>
 </body>
 </html>
