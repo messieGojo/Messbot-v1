@@ -1,23 +1,66 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Connexion WhatsApp</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Connexion Bot WhatsApp</title>
 </head>
 <body>
-  <div class="container">
-    <h1>Connexion WhatsApp du Bot</h1>
-    <input id="numberInput" type="text" placeholder="Entrez votre numéro WhatsApp">
-    <button id="submitBtn">Valider</button>
-    <div id="pairingSection" style="display: none;">
-      <h3>Code de Pairing</h3>
-      <p id="pairingCode"></p>
-      <button id="copyBtn">Copier</button>
-    </div>
-  </div>
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="script.js"></script>
+<form id="adminForm">
+  <label for="adminNumber">Numéro administrateur (ex: +243844899201) :</label><br />
+  <input type="text" id="adminNumber" required autocomplete="off" /><br />
+  <button type="submit">Valider</button>
+</form>
+
+<div id="status"></div>
+<div id="pairingCodeContainer" style="display:none;">
+  <p>Pairing Code :</p>
+  <input type="text" id="pairingCode" readonly />
+  <button id="copyBtn">Copier</button>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+
+  const form = document.getElementById('adminForm');
+  const adminNumberInput = document.getElementById('adminNumber');
+  const statusDiv = document.getElementById('status');
+  const pairingCodeContainer = document.getElementById('pairingCodeContainer');
+  const pairingCodeInput = document.getElementById('pairingCode');
+  const copyBtn = document.getElementById('copyBtn');
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const number = adminNumberInput.value.trim();
+    if (number) {
+      statusDiv.textContent = 'Connexion en cours...';
+      pairingCodeContainer.style.display = 'none';
+      socket.emit('adminNumber', number);
+    }
+  });
+
+  socket.on('pairingCode', code => {
+    pairingCodeInput.value = code;
+    pairingCodeContainer.style.display = 'block';
+    statusDiv.textContent = 'Veuillez scanner ce code pour connecter le bot.';
+  });
+
+  socket.on('connectionStatus', status => {
+    if (status === 'connected') {
+      statusDiv.textContent = 'Bot connecté avec succès.';
+      pairingCodeContainer.style.display = 'none';
+    }
+  });
+
+  socket.on('error', message => {
+    statusDiv.textContent = 'Erreur : ' + message;
+  });
+
+  copyBtn.addEventListener('click', () => {
+    pairingCodeInput.select();
+    document.execCommand('copy');
+  });
+</script>
 </body>
 </html>
