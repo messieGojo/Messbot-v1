@@ -3,92 +3,77 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Connexion WhatsApp - Pairing Code</title>
+  <title>Connexion WhatsApp</title>
   <style>
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Segoe UI', sans-serif;
       max-width: 500px;
-      margin: 0 auto;
-      padding: 20px;
+      margin: 20px auto;
+      padding: 0;
       background-color: #f0f2f5;
     }
     .container {
       background: white;
       padding: 25px;
       border-radius: 15px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
     h1 {
       color: #075e54;
       text-align: center;
       margin-bottom: 25px;
     }
-    .input-group {
-      margin-bottom: 20px;
-    }
     label {
       display: block;
       margin-bottom: 8px;
       font-weight: 600;
-      color: #333;
     }
-    input[type="text"] {
+    input {
       width: 100%;
-      padding: 12px 15px;
-      border: 2px solid #ddd;
+      padding: 12px;
+      margin-bottom: 20px;
+      border: 1px solid #ddd;
       border-radius: 8px;
       font-size: 16px;
-      transition: border 0.3s;
-    }
-    input[type="text"]:focus {
-      border-color: #075e54;
-      outline: none;
     }
     button {
-      background-color: #075e54;
+      background: #075e54;
       color: white;
       border: none;
-      padding: 14px 20px;
+      padding: 14px;
       border-radius: 8px;
-      cursor: pointer;
       font-size: 16px;
-      font-weight: 600;
+      cursor: pointer;
       width: 100%;
       transition: background 0.3s;
     }
     button:hover {
-      background-color: #128c7e;
+      background: #128c7e;
     }
     #status {
       padding: 15px;
       margin: 20px 0;
       border-radius: 8px;
       text-align: center;
-      font-weight: 500;
     }
     .status-waiting {
-      background-color: #fff8e1;
+      background: #fff8e1;
       color: #ff8f00;
     }
     .status-success {
-      background-color: #e8f5e9;
+      background: #e8f5e9;
       color: #2e7d32;
     }
     .status-error {
-      background-color: #ffebee;
+      background: #ffebee;
       color: #c62828;
     }
     #pairingContainer {
-      background-color: #e3f2fd;
+      background: #e3f2fd;
       padding: 20px;
       border-radius: 10px;
-      margin-top: 25px;
+      margin-top: 20px;
       display: none;
-    }
-    .pairing-header {
-      font-weight: 600;
-      margin-top: 0;
-      color: #0d47a1;
     }
     .code-wrapper {
       display: flex;
@@ -99,26 +84,17 @@
       flex: 1;
       padding: 12px;
       font-size: 18px;
-      font-weight: bold;
       text-align: center;
       border: 2px dashed #90caf9;
       border-radius: 8px;
       background: white;
     }
     #copyBtn {
-      background-color: #1976d2;
-      padding: 0 20px;
+      background: #1976d2;
       white-space: nowrap;
     }
     #copyBtn:hover {
-      background-color: #1565c0;
-    }
-    .steps {
-      margin-top: 20px;
-      padding-left: 20px;
-    }
-    .steps li {
-      margin-bottom: 8px;
+      background: #1565c0;
     }
   </style>
 </head>
@@ -127,29 +103,26 @@
     <h1>Connexion WhatsApp</h1>
     
     <form id="adminForm">
-      <div class="input-group">
-        <label for="adminNumber">Votre numéro WhatsApp :</label>
-        <input 
-          type="text" 
-          id="adminNumber" 
-          required 
-          placeholder="Ex: +243844899201"
-          pattern="^\+\d{10,15}$"
-        >
-      </div>
+      <label for="adminNumber">Numéro avec indicatif :</label>
+      <input 
+        type="text" 
+        id="adminNumber" 
+        required 
+        placeholder="+243844899201"
+        pattern="^\+\d{10,15}$"
+      >
       <button type="submit">Générer le code</button>
     </form>
 
     <div id="status" class="status-waiting">Prêt à se connecter</div>
     
     <div id="pairingContainer">
-      <h3 class="pairing-header">Code de jumelage WhatsApp</h3>
+      <h3>Code de jumelage :</h3>
       <div class="code-wrapper">
         <input type="text" id="pairingCode" readonly>
         <button id="copyBtn">Copier</button>
       </div>
-      
-      <ol class="steps">
+      <ol style="padding-left: 20px; margin-top: 15px;">
         <li>Ouvrez WhatsApp sur votre téléphone</li>
         <li>Allez dans <strong>Paramètres → Appareils liés</strong></li>
         <li>Sélectionnez <strong>Lier un appareil</strong></li>
@@ -162,24 +135,21 @@
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const socket = io({
-        reconnectionDelay: 5000,
-        timeout: 60000
+        reconnectionAttempts: 3,
+        timeout: 10000
       });
       
       const form = document.getElementById('adminForm');
-      const adminNumber = document.getElementById('adminNumber');
-      const status = document.getElementById('status');
+      const statusDiv = document.getElementById('status');
       const pairingContainer = document.getElementById('pairingContainer');
       const pairingCode = document.getElementById('pairingCode');
       const copyBtn = document.getElementById('copyBtn');
 
-      
       function setStatus(text, type) {
-        status.textContent = text;
-        status.className = `status-${type}`;
+        statusDiv.textContent = text;
+        statusDiv.className = `status-${type}`;
       }
 
-      
       socket.on('connect', () => {
         setStatus('Connecté au serveur', 'success');
       });
@@ -188,47 +158,43 @@
         setStatus('Déconnecté du serveur', 'error');
       });
 
-      socket.on('connect_error', () => {
-        setStatus('Erreur de connexion au serveur', 'error');
-      });
-
-    
       form.addEventListener('submit', (e) => {
         e.preventDefault();
-        const number = adminNumber.value.trim();
+        const number = document.getElementById('adminNumber').value.trim();
         
         if (!number.match(/^\+\d{10,15}$/)) {
-          setStatus('Format invalide. Ex: +243844899201', 'error');
+          setStatus('Format invalide (ex: +243844899201)', 'error');
           return;
         }
 
-        setStatus('Génération du code en cours...', 'waiting');
+        setStatus('Connexion en cours...', 'waiting');
         pairingContainer.style.display = 'none';
         socket.emit('adminNumber', number);
       });
 
-      
       socket.on('pairingCode', (code) => {
         pairingCode.value = code;
         pairingContainer.style.display = 'block';
         setStatus('Code généré avec succès', 'success');
       });
 
-      
-      socket.on('error', (message) => {
-        setStatus('Erreur: ' + message, 'error');
+      socket.on('connectionStatus', (status) => {
+        if (status === 'connected') {
+          setStatus('Connecté avec succès !', 'success');
+          pairingContainer.style.display = 'none';
+        }
       });
 
-      
+      socket.on('error', (message) => {
+        setStatus('Erreur : ' + message, 'error');
+      });
+
       copyBtn.addEventListener('click', () => {
         pairingCode.select();
         document.execCommand('copy');
-        
-        const originalText = copyBtn.textContent;
         copyBtn.textContent = 'Copié !';
-        
         setTimeout(() => {
-          copyBtn.textContent = originalText;
+          copyBtn.textContent = 'Copier';
         }, 2000);
       });
     });
