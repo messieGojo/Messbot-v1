@@ -9,10 +9,18 @@ const P = require('pino')
 const ai = require('./commands/ai')
 
 const app = express()
-const PORT = process.env.PORT || 3001 
+const PORT = process.env.PORT || 3001
 
 app.get('/', (req, res) => res.send('Bot actif'))
-app.listen(PORT, () => console.log(`Serveur enfin démarré sur le port ${PORT} !`))
+
+const server = app.listen(PORT, () => {
+  console.log(`Serveur démarré sur le port ${PORT}`)
+}).on('error', (err) => {
+  if(err.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} occupé. Utilisation du port ${Number(PORT)+1}`)
+    app.listen(Number(PORT)+1)
+  }
+})
 
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState('./sessions')
@@ -30,7 +38,7 @@ async function startBot() {
     const { connection, lastDisconnect, pairingCode, isNewLogin } = update
 
     if (pairingCode) {
-      console.log(`✅ Ton code de pairing est : *${pairingCode}*`)
+      console.log(`Code de pairing : ${pairingCode}`)
     }
 
     if (connection === 'close') {
@@ -41,7 +49,7 @@ async function startBot() {
     }
 
     if (connection === 'open') {
-      console.log('✅ Bot connecté avec succès.')
+      console.log('Bot connecté')
     }
   })
 
@@ -56,3 +64,8 @@ async function startBot() {
 }
 
 startBot()
+
+process.on('SIGINT', () => {
+  server.close()
+  process.exit()
+})
