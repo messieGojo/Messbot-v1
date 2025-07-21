@@ -1,6 +1,8 @@
 const {
   default: makeWASocket,
   useMultiFileAuthState,
+  fetchLatestBaileysVersion,
+  makeCacheableSignalKeyStore,
   DisconnectReason
 } = require('@whiskeysockets/baileys')
 const { Boom } = require('@hapi/boom')
@@ -12,28 +14,33 @@ const app = express()
 const PORT = process.env.PORT || 3000
 
 app.get('/', (req, res) => res.send('Bot actif'))
-app.listen(PORT, () => console.log('Serveur  démarré !'))
+app.listen(PORT, () => console.log('Serveur démarré !'))
 
 async function startBot() {
+  const { version } = await fetchLatestBaileysVersion()
   const { state, saveCreds } = await useMultiFileAuthState('./sessions')
 
   const sock = makeWASocket({
-    auth: state,
+    version,
     logger: P({ level: 'silent' }),
+    auth: {
+      creds: state.creds,
+      keys: makeCacheableSignalKeyStore(state.keys, P({ level: 'silent' }))
+    },
+    browser: ['Ubuntu', 'Chrome', '20.0.04'],
+    syncFullHistory: false,
     printQRInTerminal: false,
-    printPairingCode: true
+    generateHighQualityLinkPreview: true
   })
 
   sock.ev.on('creds.update', saveCreds)
 
   sock.ev.on('connection.update', update => {
-    const { connection, lastDisconnect, pairing } = update
-    if (pairing?.code) console.log('Pair code  :', pairing.code)
+    const { connection, lastDisconnect, pairingCode } = update
+    if (pairingCode) console.log('✅ Ton code de pairing est : *' + pairingCode + '*')
     if (connection === 'close') {
-      const code = (lastDisconnect?.error && new Boom(lastDisconnect.error).output.statusCode) || 0
-      if (code !== DisconnectReason.loggedOut) {
-        setTimeout(startBot, 5000)
-      }
+      const code = new Boom(lastDisconnect?.error).output.statusCode
+      if (code !== DisconnectReason.loggedOut) setTimeout(startBot, 5000)
     }
     if (connection === 'open') console.log('Bot connecté')
   })
