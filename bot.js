@@ -1,83 +1,99 @@
-const {
-  default: makeWASocket,
+import express from 'express'
+import { createServer } from 'http'
+import { Server } from 'socket.io'
+import makeWASocket, {
   useMultiFileAuthState,
-  DisconnectReason
-} = require('@whiskeysockets/baileys')
-const { Boom } = require('@hapi/boom')
-const express = require('express')
-const http = require('http')
-const { Server } = require('socket.io')
-const P = require('pino')
-const path = require('path')
-const ai = require('./commands/ai')
+  DisconnectReason,
+  fetchLatestBaileysVersion
+} from '@whiskeysockets/baileys'
+import { Boom } from '@hapi/boom'
+import pino from 'pino'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import ai from './commands/ai.js'
+
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const app = express()
-const server = http.createServer(app)
+const server = createServer(app)
 const io = new Server(server)
 
-const PORT = process.env.PORT || 3000
+let sock
+let pairingCode
+let socketClient
 
 app.use(express.static(path.join(__dirname, 'public')))
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public/index.html'))
-})
-
-let sock = null
-let saveCreds = null
 
 io.on('connection', (socket) => {
-  socket.on('adminNumber', async (number) => {
-    if (sock) {
-      try {
-        await sock.logout()
-      } catch {}
-      sock.ev.removeAllListeners()
-      sock = null
-      saveCreds = null
+  console.log('Client connecté')
+  socketClient = socket
+
+  socket.on('admin-number', async (number) => {
+    if (!number) return
+
+    pairingCode = await startBot(number)
+
+    if (pairingCode) {
+      socket.emit('pairing-code', pairingCode)
+    } else {
+      socket.emit('error', 'Erreur lors de la génération du code.')
     }
-    startBot(number, socket)
   })
 })
 
-async function startBot(adminNumber, socket) {
-  const { state, saveCreds: save } = await useMultiFileAuthState('./sessions')
-  saveCreds = save
+async function startBot(adminNumber) {
+  const { version } = await fetchLatestBaileysVersion()
+  const { state, saveCreds } = await useMultiFileAuthState('./sessions')
 
   sock = makeWASocket({
+    version,
+    logger: pino({ level: 'silent' }),
+    printQRInTerminal: false,
     auth: state,
-    logger: P({ level: 'silent' }),
-    printPairingCode: false
+    syncFullHistory: false,
+    generateHighQualityLinkPreview: false
   })
 
   sock.ev.on('creds.update', saveCreds)
 
-  sock.ev.on('connection.update', update => {
-    const { connection, lastDisconnect, pairing } = update
-
-    if (pairing?.code) {
-      socket.emit('pairingCode', pairing.code)
-    }
-
+  sock.ev.on('connection.update', async ({ connection, lastDisconnect, pairingCode: code }) => {
     if (connection === 'close') {
-      const statusCode = (lastDisconnect?.error && new Boom(lastDisconnect.error).output.statusCode) || 0
-      if (statusCode !== DisconnectReason.loggedOut) {
-        setTimeout(() => startBot(adminNumber, socket), 5000)
+      const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut
+      console.log('Connexion fermée. Reconnexion:', shouldReconnect)
+      if (shouldReconnect) {
+        startBot(adminNumber)
       }
     }
 
+    if (code && socketClient) {
+      pairingCode = code
+      socketClient.emit('pairing-code', pairingCode)
+    }
+
     if (connection === 'open') {
-      console.log('Bot connecté en tant que:', adminNumber)
+      console.log('✅ Bot connecté avec succès.')
     }
   })
 
   sock.ev.on('messages.upsert', async ({ messages }) => {
     const msg = messages[0]
     if (!msg.message || msg.key.fromMe) return
-    if (!msg.key.remoteJid.endsWith('@s.whatsapp.net') && !msg.key.remoteJid.endsWith('@g.us')) return
-    try {
-      await ai.execute(msg, sock)
-    } catch {}
+
+    const from = msg.key.remoteJid
+    const text = msg.message.conversation || msg.message.extendedTextMessage?.text || ''
+
+    if (text.startsWith('!ai')) {
+      const prompt = text.slice(3).trim()
+      const response = await ai(prompt)
+      await sock.sendMessage(from, { text: response })
+    }
   })
+
+  return pairingCode
 }
 
-server.listen(PORT, () => console.log(`Serveur démarré sur le port ${PORT}`))
+server.listen(3000, () => {
+  console.log('Serveur démarré sur http://localhost:3000')
+})
