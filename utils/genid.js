@@ -1,4 +1,4 @@
-function makeid(num = 6) {
+function makeid(num = 8) {
   let result = ''
   let characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
   for (let i = 0; i < num; i++) {
