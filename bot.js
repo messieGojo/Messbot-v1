@@ -10,8 +10,7 @@ import { Boom } from '@hapi/boom'
 import pino from 'pino'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import ai from './commands/ai.js'
-
+import aiCommand from './commands/ai.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -82,12 +81,16 @@ async function startBot(adminNumber) {
     if (!msg.message || msg.key.fromMe) return
 
     const from = msg.key.remoteJid
-    const text = msg.message.conversation || msg.message.extendedTextMessage?.text || ''
+    const text =
+      msg.message?.conversation ||
+      msg.message?.extendedTextMessage?.text ||
+      msg.message?.imageMessage?.caption ||
+      msg.message?.videoMessage?.caption ||
+      ''
 
-    if (text.startsWith('!ai')) {
-      const prompt = text.slice(3).trim()
-      const response = await ai(prompt)
-      await sock.sendMessage(from, { text: response })
+    if (text.toLowerCase().startsWith('!ai')) {
+      msg.message.conversation = text.replace(/^!ai\s*/i, '')
+      await aiCommand.execute(msg, sock)
     }
   })
 
