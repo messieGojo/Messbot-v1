@@ -8,16 +8,19 @@ const express = require('express')
 const http = require('http')
 const { Server } = require('socket.io')
 const P = require('pino')
+const path = require('path')
 const ai = require('./commands/ai')
 
 const app = express()
 const server = http.createServer(app)
 const io = new Server(server)
 
-app.use(express.static('public'))
-app.get('/', (req, res) => res.sendFile(__dirname + '/public/index.html'))
-
 const PORT = process.env.PORT || 3000
+
+app.use(express.static(path.join(__dirname, 'public')))
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/index.html'))
+})
 
 let sock = null
 let saveCreds = null
@@ -28,7 +31,7 @@ io.on('connection', (socket) => {
       try {
         await sock.logout()
       } catch {}
-      sock.ev.removeAllListeners() 
+      sock.ev.removeAllListeners()
       sock = null
       saveCreds = null
     }
