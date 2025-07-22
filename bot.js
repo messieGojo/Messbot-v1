@@ -1,22 +1,15 @@
-import express from 'express'
-import { createServer } from 'http'
-import { Server } from 'socket.io'
-import makeWASocket, {
-  useMultiFileAuthState,
-  DisconnectReason,
-  fetchLatestBaileysVersion
-} from '@whiskeysockets/baileys'
-import { Boom } from '@hapi/boom'
-import pino from 'pino'
-import path from 'path'
-import { fileURLToPath } from 'url'
-import aiCommand from './commands/ai.js'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const express = require('express')
+const http = require('http')
+const { Server } = require('socket.io')
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys')
+const { Boom } = require('@hapi/boom')
+const pino = require('pino')
+const path = require('path')
+const aiCommand = require('./commands/ai')
+const { makeid } = require('./utils/genid')
 
 const app = express()
-const server = createServer(app)
+const server = http.createServer(app)
 const io = new Server(server)
 
 let sock
@@ -32,7 +25,8 @@ io.on('connection', (socket) => {
   socket.on('admin-number', async (number) => {
     if (!number) return
 
-    pairingCode = await startBot(number)
+    const sessionID = makeid(8)
+    pairingCode = await startBot(number, sessionID)
 
     if (pairingCode) {
       socket.emit('pairing-code', pairingCode)
@@ -42,9 +36,9 @@ io.on('connection', (socket) => {
   })
 })
 
-async function startBot(adminNumber) {
+async function startBot(adminNumber, sessionID) {
   const { version } = await fetchLatestBaileysVersion()
-  const { state, saveCreds } = await useMultiFileAuthState('./sessions')
+  const { state, saveCreds } = await useMultiFileAuthState(`./sessions/${adminNumber}_${sessionID}`)
 
   sock = makeWASocket({
     version,
@@ -62,7 +56,7 @@ async function startBot(adminNumber) {
       const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut
       console.log('Connexion fermée. Reconnexion:', shouldReconnect)
       if (shouldReconnect) {
-        startBot(adminNumber)
+        startBot(adminNumber, makeid(8))
       }
     }
 
