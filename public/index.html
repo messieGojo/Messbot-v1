@@ -20,6 +20,7 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
+      padding: 20px;
     }
 
     .container {
@@ -82,19 +83,26 @@
       font-weight: bold;
       color: #00ffcc;
       display: none;
+      animation: fadeIn 0.5s ease-in-out;
     }
 
     .error {
       color: #ff4d4d;
       margin-top: 15px;
       font-size: 15px;
+      min-height: 18px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Connexion du Bot WhatsApp</h1>
-    <input type="text" id="adminNumber" placeholder="Entrez le numéro de l’administrateur" />
+    <input type="text" id="adminNumber" placeholder="Numéro admin (ex: +243...)" />
     <button id="submitBtn">Obtenir le code d’appairage</button>
     <div id="pairingCode" class="code-box"></div>
     <div id="error" class="error"></div>
@@ -110,7 +118,11 @@
 
     submitBtn.onclick = () => {
       const number = adminInput.value.trim()
-      if (!number) return
+      if (!number.startsWith('+') || number.length < 8) {
+        errorBox.textContent = "⚠️ Numéro invalide. Format attendu : +243..."
+        codeBox.style.display = 'none'
+        return
+      }
 
       codeBox.style.display = 'none'
       errorBox.textContent = ''
@@ -124,7 +136,7 @@
     })
 
     socket.on('error', message => {
-      errorBox.textContent = message
+      errorBox.textContent = "❌ " + message
       codeBox.style.display = 'none'
     })
   </script>
