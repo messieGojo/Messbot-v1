@@ -22,11 +22,11 @@ app.get('/', (req, res) => {
 })
 
 io.on('connection', (socket) => {
-  console.log('✅ Client connecté à Socket.io')
+  console.log(' Client connecté à Socket.io')
   socketClient = socket
 
   socket.on('admin-number', async (number) => {
-    console.log('📥 Numéro admin reçu :', number)
+    console.log(' Numéro admin reçu :', number)
     adminNumber = number
     await startBot()
   })
@@ -56,7 +56,7 @@ async function startBot() {
     const { connection, qr } = update
 
     if (qr) {
-      const code = makeid(6)
+      const code = makeid(8)
       console.log('🔐 Code d’appairage :', code)
       if (socketClient) {
         socketClient.emit('pairing-code', code)
