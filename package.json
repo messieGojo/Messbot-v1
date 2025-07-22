@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Bot WhatsApp avec authentification via code d’appairage et commande IA intégrée",
   "main": "bot.js",
+  "type": "commonjs",
   "scripts": {
     "start": "node bot.js",
     "dev": "nodemon bot.js"
