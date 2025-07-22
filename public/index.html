@@ -2,148 +2,124 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Connexion WhatsApp</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
-      font-family: sans-serif;
-      max-width: 500px;
-      margin: 20px auto;
+    * {
+      box-sizing: border-box;
+      margin: 0;
       padding: 0;
-      background-color: #f0f2f5;
     }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
     .container {
-      background: white;
-      padding: 25px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      padding: 30px;
       border-radius: 15px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-    h1 {
-      color: #075e54;
+      box-shadow: 0 0 25px rgba(0, 0, 0, 0.5);
+      width: 100%;
+      max-width: 400px;
       text-align: center;
-      margin-bottom: 25px;
     }
+
+    h1 {
+      font-size: 1.8em;
+      margin-bottom: 20px;
+      color: #00ffcc;
+    }
+
     label {
       display: block;
-      margin-bottom: 8px;
-      font-weight: 600;
+      margin-bottom: 10px;
+      font-size: 1em;
     }
+
     input {
       width: 100%;
       padding: 12px;
-      margin-bottom: 20px;
-      border: 1px solid #ddd;
+      font-size: 1em;
       border-radius: 8px;
-      font-size: 16px;
-    }
-    button {
-      background: #075e54;
-      color: white;
       border: none;
-      padding: 14px;
+      margin-bottom: 20px;
+      background: #fff;
+      color: #000;
+    }
+
+    button {
+      background: #00ffcc;
+      color: #000;
+      font-weight: bold;
+      padding: 12px 20px;
+      border: none;
       border-radius: 8px;
-      font-size: 16px;
+      font-size: 1em;
       cursor: pointer;
-      width: 100%;
       transition: background 0.3s;
     }
+
     button:hover {
-      background: #128c7e;
+      background: #00cfa3;
     }
+
     #status {
-      padding: 15px;
-      margin: 20px 0;
-      border-radius: 8px;
-      text-align: center;
-    }
-    .status-waiting {
-      background: #fff8e1;
-      color: #ff8f00;
-    }
-    .status-success {
-      background: #e8f5e9;
-      color: #2e7d32;
-    }
-    .status-error {
-      background: #ffebee;
-      color: #c62828;
-    }
-    #pairingContainer {
-      background: #e3f2fd;
-      padding: 20px;
-      border-radius: 10px;
-      margin-top: 20px;
-      display: none;
-    }
-    .code-wrapper {
-      display: flex;
-      gap: 10px;
-      margin-top: 10px;
-    }
-    #pairingCode {
-      flex: 1;
-      padding: 12px;
-      font-size: 18px;
-      text-align: center;
-      border: 2px dashed #90caf9;
-      border-radius: 8px;
-      background: white;
-    }
-    #copyBtn {
-      background: #1976d2;
-      white-space: nowrap;
-    }
-    #copyBtn:hover {
-      background: #1565c0;
+      margin-top: 25px;
+      font-size: 1.1em;
+      min-height: 30px;
+      color: #00ffcc;
     }
   </style>
 </head>
 <body>
-  <h1>Connexion WhatsApp</h1>
-
-  <form id="pairing-form">
-    <label for="phone">Numéro avec indicatif :</label>
-    <input type="text" id="phone" value="+243844899201" required />
-    <button type="submit">Générer le code</button>
-  </form>
-
-  <p id="status">En attente...</p>
-  <p id="code"></p>
+  <div class="container">
+    <h1>Connexion WhatsApp</h1>
+    <form id="pairing-form">
+      <label for="number">Numéro avec indicatif :</label>
+      <input type="text" id="number" value="+243844899201" required />
+      <button type="submit">Valider</button>
+    </form>
+    <div id="status">En attente...</div>
+  </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const form = document.getElementById('pairing-form');
-    const phoneInput = document.getElementById('phone');
-    const statusText = document.getElementById('status');
-    const codeText = document.getElementById('code');
+    const form = document.getElementById('pairing-form')
+    const status = document.getElementById('status')
+    const socket = io()
 
-    const socket = io();
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      status.innerText = "Connexion en cours..."
+      const number = document.getElementById("number").value.trim()
+      if (!number) {
+        status.innerText = "❌ Numéro manquant."
+        return
+      }
+      await fetch("/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ number })
+      })
+    })
 
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const number = phoneInput.value.trim();
-      if (number.length < 7) return alert("Numéro invalide");
-      statusText.textContent = 'Connexion en cours...';
-      codeText.textContent = '';
-      socket.emit('start-pairing', number);
-    });
+    socket.on("pairing-code", (code) => {
+      status.innerHTML = `✅ Ton code d’appairage : <strong>${code}</strong>`
+    })
 
-    socket.on('pairing-code', (code) => {
-      statusText.textContent = '✅ Ton code de pairing est :';
-      codeText.textContent = '*' + code + '*';
-    });
-
-    socket.on('error-message', (msg) => {
-      statusText.textContent = 'Erreur : ' + msg;
-    });
-
-    socket.on('pairing-success', () => {
-      statusText.textContent = '✅ Connecté avec succès.';
-    });
-
-    socket.on('pairing-failed', () => {
-      statusText.textContent = '❌ Échec de la connexion.';
-    });
+    socket.on("error-message", (err) => {
+      status.innerHTML = `❌ Erreur : <strong>${err}</strong>`
+    })
   </script>
 </body>
 </html>
