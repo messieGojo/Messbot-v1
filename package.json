@@ -1,32 +1,35 @@
 {
   "name": "messbot",
   "version": "1.0.0",
-  "description": "Bot WhatsApp avec authentification par pairing code",
+  "description": "Bot WhatsApp avec authentification via code d’appairage et commande IA intégrée",
   "main": "bot.js",
-  "engines": {
-    "node": ">=18.x",
-    "npm": ">=9.x"
-  },
   "scripts": {
     "start": "node bot.js",
-    "dev": "nodemon bot.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon bot.js"
   },
-  "dependencies": {
-    "@whiskeysockets/baileys": "^6.7.1",
-    "@hapi/boom": "^10.0.0",
-    "express": "^4.18.2",
-    "socket.io": "^4.7.5",
-    "pino": "^8.15.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.0"
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   },
   "keywords": [
     "whatsapp",
     "bot",
-    "pairing-code"
+    "baileys",
+    "socket.io",
+    "ai",
+    "pairing"
   ],
-  "author": "messie osango",
-  "license": "ISC"
+  "author": "Messie Osango",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.7",
+    "express": "^4.18.2",
+    "pino": "^8.15.0",
+    "@hapi/boom": "^10.0.0",
+    "@whiskeysockets/baileys": "^6.7.1",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
 }
