@@ -3,141 +3,114 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Connexion WhatsApp Bot</title>
-  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;600&display=swap" rel="stylesheet">
+  <title>Connexion MessBot</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
   <style>
     * {
       margin: 0;
       padding: 0;
+      font-family: 'Orbitron', sans-serif;
       box-sizing: border-box;
-      font-family: 'Rubik', sans-serif;
     }
 
     body {
-      background: linear-gradient(145deg, #121212, #1e1e1e);
-      color: #f0f0f0;
+      background: linear-gradient(135deg, #0f0f0f, #1f1f1f);
+      color: #00ffcc;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
-      padding: 20px;
     }
 
     .container {
-      background: #1b1b1b;
-      padding: 40px;
+      background-color: #111;
+      padding: 30px;
       border-radius: 16px;
-      box-shadow: 0 0 30px rgba(0,0,0,0.5);
-      width: 100%;
+      box-shadow: 0 0 20px #00ffcc44;
+      width: 90%;
       max-width: 450px;
       text-align: center;
+      border: 1px solid #00ffcc33;
     }
 
     h1 {
-      font-size: 24px;
-      margin-bottom: 30px;
-      color: #00ffcc;
-    }
-
-    input {
-      width: 100%;
-      padding: 12px 16px;
-      border-radius: 8px;
-      border: none;
-      background: #2c2c2c;
-      color: #fff;
-      font-size: 16px;
       margin-bottom: 20px;
-      outline: none;
-      transition: background 0.3s;
+      font-size: 24px;
+      color: #00ffee;
     }
 
-    input:focus {
-      background: #333;
-    }
-
-    button {
-      width: 100%;
+    input[type="text"] {
       padding: 12px;
       border: none;
       border-radius: 8px;
+      margin-bottom: 20px;
+      width: 100%;
+      background: #1e1e1e;
+      color: #00ffcc;
+      font-size: 16px;
+      text-align: center;
+      outline: none;
+    }
+
+    button {
+      padding: 12px 24px;
       background: #00ffcc;
-      color: #000;
+      border: none;
+      border-radius: 8px;
       font-size: 16px;
       font-weight: bold;
+      color: #000;
       cursor: pointer;
-      transition: background 0.3s;
+      transition: background 0.2s ease-in-out;
     }
 
     button:hover {
-      background: #00e6b8;
+      background: #00ddb8;
     }
 
-    .code-box {
-      margin-top: 25px;
-      background: #2c2c2c;
+    .code {
+      margin-top: 30px;
+      background: #000;
       padding: 15px;
       border-radius: 8px;
-      word-break: break-word;
-      font-size: 18px;
-      font-weight: bold;
+      font-size: 20px;
+      letter-spacing: 4px;
+      border: 1px dashed #00ffcc;
       color: #00ffcc;
-      display: none;
-      animation: fadeIn 0.5s ease-in-out;
+      word-break: break-all;
+      user-select: all;
     }
 
-    .error {
-      color: #ff4d4d;
-      margin-top: 15px;
-      font-size: 15px;
-      min-height: 18px;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-10px); }
-      to { opacity: 1; transform: translateY(0); }
+    .footer {
+      margin-top: 40px;
+      font-size: 12px;
+      color: #666;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Connexion du Bot WhatsApp</h1>
-    <input type="text" id="adminNumber" placeholder="Numéro admin (ex: +243...)" />
-    <button id="submitBtn">Obtenir le code d’appairage</button>
-    <div id="pairingCode" class="code-box"></div>
-    <div id="error" class="error"></div>
+    <h1>🔐 Connexion à MessBot</h1>
+    <input type="text" id="number" placeholder="Entrez votre numéro WhatsApp">
+    <button onclick="sendNumber()">Obtenir le code d'appairage</button>
+    <div id="pairingCode" class="code" style="display:none;"></div>
+    <div class="footer">CyberCodex © 2025</div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io()
-    const submitBtn = document.getElementById('submitBtn')
-    const adminInput = document.getElementById('adminNumber')
-    const codeBox = document.getElementById('pairingCode')
-    const errorBox = document.getElementById('error')
 
-    submitBtn.onclick = () => {
-      const number = adminInput.value.trim()
-      if (!number.startsWith('+') || number.length < 8) {
-        errorBox.textContent = "⚠️ Numéro invalide. Format attendu : +243..."
-        codeBox.style.display = 'none'
-        return
-      }
-
-      codeBox.style.display = 'none'
-      errorBox.textContent = ''
-
-      socket.emit('admin-number', number)
+    function sendNumber() {
+      const number = document.getElementById("number").value.trim()
+      if (!number) return alert("Numéro invalide.")
+      socket.emit("admin-number", number)
     }
 
-    socket.on('pairing-code', code => {
-      codeBox.textContent = '🔐 Code d’appairage : ' + code
-      codeBox.style.display = 'block'
-    })
-
-    socket.on('error', message => {
-      errorBox.textContent = "❌ " + message
-      codeBox.style.display = 'none'
+    socket.on("pairing-code", (code) => {
+      const pairingDiv = document.getElementById("pairingCode")
+      pairingDiv.textContent = "🔐 Code : " + code
+      pairingDiv.style.display = "block"
     })
   </script>
 </body>
