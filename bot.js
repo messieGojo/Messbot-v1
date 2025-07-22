@@ -14,6 +14,7 @@ const io = new Server(server)
 
 let socketClient = null
 let adminNumber = null
+let codePairing = null
 
 app.use(express.static('public'))
 
@@ -22,12 +23,14 @@ app.get('/', (req, res) => {
 })
 
 io.on('connection', (socket) => {
-  console.log(' Client connecté à Socket.io')
+  console.log('Client connecté à Socket.io')
   socketClient = socket
 
   socket.on('admin-number', async (number) => {
-    console.log(' Numéro admin reçu :', number)
+    console.log('Numéro admin reçu :', number)
     adminNumber = number
+    codePairing = makeid(8)
+    if (socketClient) socketClient.emit('pairing-code', codePairing)
     await startBot()
   })
 })
@@ -39,7 +42,6 @@ fs.readdirSync(commandsPath).forEach(file => {
   commands.set(command.name, command)
 })
 
-
 async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState('./sessions')
 
@@ -47,31 +49,25 @@ async function startBot() {
     logger: P({ level: 'silent' }),
     printQRInTerminal: true,
     auth: state,
-    browser: ['MessBot', 'Safari', '1.0']
+    browser: ['MessBot', 'Chrome', '1.0']
   })
 
   sock.ev.on('creds.update', saveCreds)
 
   sock.ev.on('connection.update', (update) => {
-    const { connection, qr } = update
-
-    if (qr) {
-      const code = makeid(8)
-      console.log('🔐 Code d’appairage :', code)
-      if (socketClient) {
-        socketClient.emit('pairing-code', code)
-      }
-    }
+    const { connection, lastDisconnect } = update
 
     if (connection === 'close') {
-      const reason = new Boom(update.lastDisconnect?.error)?.output.statusCode
-      console.log('❌ Déconnecté. Raison :', reason)
+      const reason = new Boom(lastDisconnect?.error)?.output.statusCode
+      console.log('Déconnexion. Raison :', reason)
     } else if (connection === 'open') {
       console.log('✅ Bot connecté à WhatsApp')
+      if (socketClient && codePairing) {
+        socketClient.emit('connected', codePairing)
+      }
     }
   })
 
-  
   sock.ev.on('messages.upsert', async ({ messages }) => {
     const msg = messages[0]
     if (!msg.message) return
@@ -95,5 +91,5 @@ async function startBot() {
 }
 
 server.listen(process.env.PORT || 3000, () => {
-  console.log(' Serveur web actif sur le port 3000')
+  console.log('Serveur web actif sur le port 3000')
 })
