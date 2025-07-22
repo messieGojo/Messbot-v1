@@ -1,63 +1,80 @@
-import { makeWASocket, useMultiFileAuthState, DisconnectReason } from '@whiskeysockets/baileys';
-import { Boom } from '@hapi/boom';
-import express from 'express';
-import http from 'http';
-import { Server } from 'socket.io';
-import pino from 'pino';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { execute as aiExecute } from './commands/ai.js';
+const {
+  default: makeWASocket,
+  useMultiFileAuthState,
+  DisconnectReason
+} = require('@whiskeysockets/baileys')
+const { Boom } = require('@hapi/boom')
+const express = require('express')
+const http = require('http')
+const { Server } = require('socket.io')
+const P = require('pino')
+const ai = require('./commands/ai')
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
-const PORT = process.env.PORT || 10000;
-let sock = null;
+const app = express()
+const server = http.createServer(app)
+const io = new Server(server)
 
-app.use(express.static(path.join(__dirname, 'public')));
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.use(express.static('public'))
+app.get('/', (req, res) => res.sendFile(__dirname + '/public/index.html'))
 
-async function startBot(adminNumber, socket) {
-  try {
-    const { state } = await useMultiFileAuthState(path.join(__dirname, 'sessions', adminNumber.replace('+', '')));
-    sock = makeWASocket({
-      auth: state,
-      logger: pino({ level: 'silent' }),
-      connectTimeoutMs: 60000,
-      browser: ['Chrome (Linux)', '', '']
-    });
+const PORT = process.env.PORT || 3000
 
-    sock.ev.on('connection.update', (update) => {
-      if (update.pairingCode) socket.emit('pairingCode', update.pairingCode);
-      if (update.connection === 'close') handleDisconnect(update.lastDisconnect, adminNumber, socket);
-    });
-
-    sock.ev.on('messages.upsert', async ({ messages }) => {
-      const msg = messages[0];
-      if (!msg?.message || msg.key.fromMe) return;
-      await aiExecute(msg, sock);
-    });
-
-  } catch (error) {
-    socket.emit('error', 'Erreur de connexion');
-    setTimeout(() => startBot(adminNumber, socket), 10000);
-  }
-}
-
-function handleDisconnect(lastDisconnect, adminNumber, socket) {
-  const statusCode = lastDisconnect?.error?.output?.statusCode;
-  if (statusCode !== DisconnectReason.loggedOut) {
-    setTimeout(() => startBot(adminNumber, socket), 5000);
-  }
-}
+let sock = null
+let saveCreds = null
 
 io.on('connection', (socket) => {
-  socket.on('adminNumber', (number) => {
-    if (!number.match(/^\+\d{10,15}$/)) return socket.emit('error', 'Format: +243XXXXXX');
-    if (sock) sock.end();
-    startBot(number, socket);
-  });
-});
+  socket.on('adminNumber', async (number) => {
+    if (sock) {
+      try {
+        await sock.logout()
+      } catch {}
+      sock.ev.removeAllListeners() 
+      sock = null
+      saveCreds = null
+    }
+    startBot(number, socket)
+  })
+})
 
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+async function startBot(adminNumber, socket) {
+  const { state, saveCreds: save } = await useMultiFileAuthState('./sessions')
+  saveCreds = save
+
+  sock = makeWASocket({
+    auth: state,
+    logger: P({ level: 'silent' }),
+    printPairingCode: false
+  })
+
+  sock.ev.on('creds.update', saveCreds)
+
+  sock.ev.on('connection.update', update => {
+    const { connection, lastDisconnect, pairing } = update
+
+    if (pairing?.code) {
+      socket.emit('pairingCode', pairing.code)
+    }
+
+    if (connection === 'close') {
+      const statusCode = (lastDisconnect?.error && new Boom(lastDisconnect.error).output.statusCode) || 0
+      if (statusCode !== DisconnectReason.loggedOut) {
+        setTimeout(() => startBot(adminNumber, socket), 5000)
+      }
+    }
+
+    if (connection === 'open') {
+      console.log('Bot connecté en tant que:', adminNumber)
+    }
+  })
+
+  sock.ev.on('messages.upsert', async ({ messages }) => {
+    const msg = messages[0]
+    if (!msg.message || msg.key.fromMe) return
+    if (!msg.key.remoteJid.endsWith('@s.whatsapp.net') && !msg.key.remoteJid.endsWith('@g.us')) return
+    try {
+      await ai.execute(msg, sock)
+    } catch {}
+  })
+}
+
+server.listen(PORT, () => console.log(`Serveur démarré sur le port ${PORT}`))
