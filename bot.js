@@ -6,7 +6,6 @@ const path = require('path')
 const express = require('express')
 const http = require('http')
 const { Server } = require('socket.io')
-const { makeid } = require('./utils/genid')
 
 const app = express()
 const server = http.createServer(app)
@@ -14,7 +13,16 @@ const io = new Server(server)
 
 let socketClient = null
 let adminNumber = null
-let codePairing = null
+let pairingCode = null
+
+function generatePairingCode(length = 6) {
+  const numbers = '0123456789'
+  let code = ''
+  for (let i = 0; i < length; i++) {
+    code += numbers.charAt(Math.floor(Math.random() * numbers.length))
+  }
+  return code
+}
 
 app.use(express.static('public'))
 
@@ -23,36 +31,35 @@ app.get('/', (req, res) => {
 })
 
 io.on('connection', (socket) => {
-  console.log('Client connecté à Socket.io')
+  console.log('client connecté ')
   socketClient = socket
 
-  socket.on('error', (error) => {
-    console.error('Erreur Socket.io:', error)
-  })
-
   socket.on('disconnect', () => {
-    console.log('Client déconnecté')
+    console.log(' client déconnecté ')
     socketClient = null
   })
 
   socket.on('admin-number', async (number) => {
-    console.log('Numéro admin reçu :', number)
-    adminNumber = number
-    codePairing = makeid(8)
-    console.log('Code de pairing généré:', codePairing)
-    if (socketClient) {
-      console.log('Envoi du code au client')
-      socketClient.emit('pairing-code', codePairing)
+    try {
+      console.log(`[ADMIN] Registration attempt: ${number}`)
+      adminNumber = number.replace(/\D/g, '') 
+      pairingCode = generatePairingCode()
+      
+      console.log(`[PAIRING] Generated code: ${pairingCode}`)
+      
+      if (socketClient) {
+        socketClient.emit('pairing-code', {
+          code: pairingCode,
+          expiresIn: 300 
+        })
+      }
+      
+      await startBot()
+    } catch (error) {
+      console.error('[ERROR] Admin registration failed:', error)
+      if (socketClient) socketClient.emit('pairing-error', error.message)
     }
-    await startBot()
   })
-})
-
-const commands = new Map()
-const commandsPath = path.join(__dirname, 'commands')
-fs.readdirSync(commandsPath).forEach(file => {
-  const command = require(`./commands/${file}`)
-  commands.set(command.name, command)
 })
 
 async function startBot() {
@@ -68,18 +75,14 @@ async function startBot() {
   sock.ev.on('creds.update', saveCreds)
 
   sock.ev.on('connection.update', (update) => {
-    const { connection, lastDisconnect } = update
-
-    if (connection === 'close') {
-      const reason = new Boom(lastDisconnect?.error)?.output.statusCode
-      console.log('Déconnexion. Raison :', reason)
-    } else if (connection === 'open') {
-      console.log('✅ Bot connecté à WhatsApp')
+    if (update.connection === 'open') {
+      console.log('[WHATSAPP] Connected successfully')
       if (socketClient) {
-        if (!codePairing) {
-          codePairing = makeid(8)
-        }
-        socketClient.emit('connected', codePairing)
+        socketClient.emit('connection-status', {
+          connected: true,
+          pairingCode: pairingCode,
+          adminNumber: adminNumber
+        })
       }
     }
   })
@@ -89,23 +92,18 @@ async function startBot() {
     if (!msg.message) return
 
     const sender = msg.key.remoteJid
-    if (!sender.endsWith('@s.whatsapp.net')) return
-
-    const isAdmin = adminNumber && sender === `${adminNumber}@s.whatsapp.net`
-    const body = msg.message.conversation || msg.message.extendedTextMessage?.text || ''
-    const [cmdName, ...args] = body.trim().split(/\s+/)
-
-    if (commands.has(cmdName)) {
-      const command = commands.get(cmdName)
-      try {
-        await command.execute(sock, msg, args, sender, isAdmin)
-      } catch (err) {
-        console.error(`Erreur dans la commande "${cmdName}":`, err)
+    if (sender.endsWith('@s.whatsapp.net') {
+      const isAdmin = adminNumber && sender === `${adminNumber}@s.whatsapp.net`
+      
+      if (isAdmin && msg.message.conversation?.toLowerCase() === '!code') {
+        await sock.sendMessage(sender, { 
+          text: ` le pairing code est : ${pairingCode}`
+        })
       }
     }
   })
 }
 
 server.listen(process.env.PORT || 3000, () => {
-  console.log('Serveur web actif sur le port 3000')
+  console.log('serveur démarré sur le port 3000')
 })
