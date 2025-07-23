@@ -121,6 +121,7 @@
       margin-top: 1rem;
       font-size: 0.9rem;
       color: var(--text-secondary);
+      display: none;
     }
 
     @media (max-width: 480px) {
@@ -148,9 +149,7 @@
     <div id="pairingCode" class="code-box"></div>
     
     <div class="status" id="statusText">Prêt à se connecter</div>
-    <div class="qr-instructions" id="qrInstructions" style="display: none;">
-      Scannez le QR code affiché dans la console du serveur
-    </div>
+    <div class="qr-instructions" id="qrInstructions">Scannez le QR code affiché dans la console du serveur</div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -164,15 +163,12 @@
 
     function sendNumber() {
       const number = numberInput.value.trim()
-      
       if (!number || !/^\d+$/.test(number)) {
         statusText.textContent = '❌ Numéro invalide (chiffres uniquement)'
         return
       }
-      
       submitBtn.disabled = true
       statusText.textContent = 'Génération du code...'
-      
       socket.emit('admin-number', number)
     }
 
@@ -181,8 +177,6 @@
       pairingCodeBox.textContent = data.code
       statusText.textContent = 'Code généré avec succès'
       qrInstructions.style.display = 'block'
-      
-      
       navigator.clipboard.writeText(data.code).then(() => {
         statusText.textContent = 'Code copié dans le presse-papier!'
       })
@@ -198,7 +192,7 @@
       submitBtn.disabled = false
     })
 
-  pairingCodeBox.addEventListener('click', () => {
+    pairingCodeBox.addEventListener('click', () => {
       navigator.clipboard.writeText(pairingCodeBox.textContent)
       statusText.textContent = 'Code copié!'
     })
