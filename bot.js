@@ -2,7 +2,7 @@ if (!globalThis.crypto) {
   globalThis.crypto = require('crypto').webcrypto
 }
 
-const { default: makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, makeInMemoryStore } = require('@whiskeysockets/baileys')
+const { default: makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion } = require('@whiskeysockets/baileys')
 const { Boom } = require('@hapi/boom')
 const P = require('pino')
 const fs = require('fs')
@@ -26,7 +26,6 @@ fs.readdirSync(commandsPath).forEach(file => {
 })
 
 let socketClient = null
-let adminNumber = null
 let pairingCode = null
 let sock = null
 
@@ -53,9 +52,8 @@ io.on('connection', (socket) => {
     socketClient = null
   })
 
-  socket.on('admin-number', async (number) => {
+  socket.on('start-pairing', async () => {
     try {
-      adminNumber = number.replace(/\D/g, '')
       pairingCode = makeid()
       if (socketClient) {
         socketClient.emit('pairing-code', {
@@ -88,8 +86,7 @@ async function startBot() {
       if (socketClient) {
         socketClient.emit('connection-status', {
           connected: true,
-          pairingCode: pairingCode,
-          adminNumber: adminNumber
+          pairingCode: pairingCode
         })
       }
     }
@@ -106,20 +103,18 @@ async function startBot() {
     const messageContent = msg.message.conversation || msg.message.extendedTextMessage?.text || ''
     if (!messageContent) return
 
-    if (adminNumber && sender === `${adminNumber}@s.whatsapp.net`) {
-      if (messageContent.toLowerCase() === '!code') {
-        await sock.sendMessage(sender, { text: pairingCode })
-        return
-      }
+    if (messageContent.toLowerCase() === '!code') {
+      await sock.sendMessage(sender, { text: pairingCode })
+      return
+    }
 
-      const args = messageContent.trim().split(/\s+/)
-      const cmdName = args.shift().toLowerCase()
-      if (commands.has(cmdName)) {
-        try {
-          await commands.get(cmdName).run({ sock, msg, args })
-        } catch (err) {
-          await sock.sendMessage(sender, { text: 'Erreur lors de l’exécution de la commande.' })
-        }
+    const args = messageContent.trim().split(/\s+/)
+    const cmdName = args.shift().toLowerCase()
+    if (commands.has(cmdName)) {
+      try {
+        await commands.get(cmdName).run({ sock, msg, args })
+      } catch {
+        await sock.sendMessage(sender, { text: 'Erreur lors de l’exécution de la commande.' })
       }
     }
   })
