@@ -26,18 +26,8 @@ fs.readdirSync(commandsPath).forEach(file => {
 })
 
 let socketClient = null
-let pairingCode = null
 let sock = null
-
-function makeid(length = 8) {
-  let result = ''
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  const charactersLength = characters.length
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * charactersLength))
-  }
-  return result
-}
+let adminNumber = null
 
 app.use(express.static('public'))
 
@@ -52,15 +42,12 @@ io.on('connection', (socket) => {
     socketClient = null
   })
 
+  socket.on('admin-number', async (number) => {
+    adminNumber = number
+  })
+
   socket.on('start-pairing', async () => {
     try {
-      pairingCode = makeid()
-      if (socketClient) {
-        socketClient.emit('pairing-code', {
-          code: pairingCode,
-          expiresIn: 300
-        })
-      }
       await startBot()
     } catch (error) {
       if (socketClient) socketClient.emit('pairing-error', error.message)
@@ -81,12 +68,21 @@ async function startBot() {
 
   sock.ev.on('creds.update', saveCreds)
 
+  if (!fs.existsSync('./sessions/creds.json') && adminNumber) {
+    const code = await sock.requestPairingCode(adminNumber)
+    if (socketClient) {
+      socketClient.emit('pairing-code', {
+        code: code,
+        expiresIn: 300
+      })
+    }
+  }
+
   sock.ev.on('connection.update', (update) => {
     if (update.connection === 'open') {
       if (socketClient) {
         socketClient.emit('connection-status', {
-          connected: true,
-          pairingCode: pairingCode
+          connected: true
         })
       }
     }
@@ -102,11 +98,6 @@ async function startBot() {
     const sender = msg.key.remoteJid
     const messageContent = msg.message.conversation || msg.message.extendedTextMessage?.text || ''
     if (!messageContent) return
-
-    if (messageContent.toLowerCase() === '!code') {
-      await sock.sendMessage(sender, { text: pairingCode })
-      return
-    }
 
     const args = messageContent.trim().split(/\s+/)
     const cmdName = args.shift().toLowerCase()
