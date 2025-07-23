@@ -26,11 +26,24 @@ io.on('connection', (socket) => {
   console.log('Client connecté à Socket.io')
   socketClient = socket
 
+  socket.on('error', (error) => {
+    console.error('Erreur Socket.io:', error)
+  })
+
+  socket.on('disconnect', () => {
+    console.log('Client déconnecté')
+    socketClient = null
+  })
+
   socket.on('admin-number', async (number) => {
     console.log('Numéro admin reçu :', number)
     adminNumber = number
     codePairing = makeid(8)
-    if (socketClient) socketClient.emit('pairing-code', codePairing)
+    console.log('Code de pairing généré:', codePairing)
+    if (socketClient) {
+      console.log('Envoi du code au client')
+      socketClient.emit('pairing-code', codePairing)
+    }
     await startBot()
   })
 })
@@ -62,7 +75,10 @@ async function startBot() {
       console.log('Déconnexion. Raison :', reason)
     } else if (connection === 'open') {
       console.log('✅ Bot connecté à WhatsApp')
-      if (socketClient && codePairing) {
+      if (socketClient) {
+        if (!codePairing) {
+          codePairing = makeid(8)
+        }
         socketClient.emit('connected', codePairing)
       }
     }
