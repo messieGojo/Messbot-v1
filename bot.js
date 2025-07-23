@@ -43,11 +43,20 @@ io.on('connection', (socket) => {
   })
 
   socket.on('admin-number', async (number) => {
-    adminNumber = number
+    if (!number.match(/^\d+$/)) {
+      if (socketClient) socketClient.emit('admin-number-error', 'Numéro invalide')
+      return
+    }
+    adminNumber = number.includes('@s.whatsapp.net') ? number : `${number}@s.whatsapp.net`
+    if (socketClient) socketClient.emit('admin-number-status', { success: true })
   })
 
   socket.on('start-pairing', async () => {
     try {
+      if (!adminNumber) {
+        throw new Error('Admin number not set')
+      }
+      if (socketClient) socketClient.emit('pairing-start')
       await startBot()
     } catch (error) {
       if (socketClient) socketClient.emit('pairing-error', error.message)
@@ -68,13 +77,19 @@ async function startBot() {
 
   sock.ev.on('creds.update', saveCreds)
 
-  if (!fs.existsSync('./sessions/creds.json') && adminNumber) {
-    const code = await sock.requestPairingCode(adminNumber)
-    if (socketClient) {
-      socketClient.emit('pairing-code', {
-        code: code,
-        expiresIn: 300
-      })
+  if (!fs.existsSync('./sessions/creds.json')) {
+    try {
+      if (socketClient) socketClient.emit('pairing-generating')
+      const code = await sock.requestPairingCode(adminNumber)
+      if (socketClient) {
+        socketClient.emit('pairing-code', {
+          code: code,
+          expiresIn: 300
+        })
+      }
+    } catch (error) {
+      if (socketClient) socketClient.emit('pairing-error', 'Failed to generate pairing code')
+      throw error
     }
   }
 
@@ -88,7 +103,9 @@ async function startBot() {
     }
     if (update.connection === 'close') {
       const reason = new Boom(update.lastDisconnect?.error)?.output?.statusCode
-      if (reason !== 401) startBot()
+      if (reason !== 401) {
+        setTimeout(startBot, 5000)
+      }
     }
   })
 
@@ -105,7 +122,7 @@ async function startBot() {
       try {
         await commands.get(cmdName).run({ sock, msg, args })
       } catch {
-        await sock.sendMessage(sender, { text: 'Erreur lors de l’exécution de la commande.' })
+        await sock.sendMessage(sender, { text: 'Command error' })
       }
     }
   })
