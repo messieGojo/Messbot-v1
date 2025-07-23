@@ -1,10 +1,13 @@
-function makeid(num = 8) {
-  let result = ''
-  let characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  for (let i = 0; i < num; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length))
+function makeid(length = 8) {
+  let result = '';
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const charactersLength = characters.length;
+  
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * charactersLength));
   }
-  return result
+  
+  return result;
 }
 
-module.exports = { makeid }
+module.exports = { makeid };
