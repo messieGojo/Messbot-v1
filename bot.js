@@ -19,7 +19,7 @@ let socketClient = null;
 let adminNumber = null;
 let pairingCode = null;
 
-function generatePairingCode(length = 6) {
+function generatePairingCode(length = 8) {
   const numbers = '0123456789';
   let code = '';
   for (let i = 0; i < length; i++) {
