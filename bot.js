@@ -1,4 +1,8 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+if (!globalThis.crypto) {
+  globalThis.crypto = require('crypto').webcrypto;
+}
+
+const { default: makeWASocket, useMultiFileAuthState } = require('@whiskeysockets/baileys');
 const { Boom } = require('@hapi/boom');
 const P = require('pino');
 const fs = require('fs');
@@ -98,5 +102,5 @@ async function startBot() {
 }
 
 server.listen(process.env.PORT || 3000, () => {
-  console.log('[SERVER] Running on port 3000');
+  console.log('Server running on port 3000');
 });
