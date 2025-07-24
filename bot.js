@@ -1,21 +1,19 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys')
+const { default: makeWASocket, useSingleFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys')
 const { Boom } = require('@hapi/boom')
 const fs = require('fs')
 const express = require('express')
 const http = require('http')
 const socketIO = require('socket.io')
 const aiCommand = require('./commands/ai')
-const { v4: uuidv4 } = require('uuid')
+const genid = require('gen-id')()
 
 const app = express()
 const server = http.createServer(app)
 const io = socketIO(server)
-
 const PORT = process.env.PORT || 3000
+const { state, saveCreds } = useSingleFileAuthState('./auth_info.json')
 
 async function startBot() {
-  const { state, saveCreds } = await useMultiFileAuthState('./auth_info')
-
   const sock = makeWASocket({
     auth: state,
     printQRInTerminal: false,
@@ -23,14 +21,6 @@ async function startBot() {
   })
 
   sock.ev.on('creds.update', saveCreds)
-
-  const authFileExists = fs.existsSync('./auth_info/creds.json')
-
-  if (!authFileExists) {
-    const code = await sock.requestPairingCode('243844899201@s.whatsapp.net')
-    console.log(`✅ Ton code de pairing est : *${code}*.`)
-    io.emit('pairing-code', code)
-  }
 
   sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
     if (connection === 'close') {
@@ -44,7 +34,7 @@ async function startBot() {
     if (!msg.message || msg.key.fromMe) return
     const sender = msg.key.remoteJid
     const text = msg.message.conversation || msg.message.extendedTextMessage?.text || ''
-    const id = uuidv4()
+    const id = genid.generate()
     const response = await aiCommand(text, id)
     await sock.sendMessage(sender, { text: response })
   })
