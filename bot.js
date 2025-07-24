@@ -5,7 +5,7 @@ const express = require('express')
 const http = require('http')
 const socketIO = require('socket.io')
 const aiCommand = require('./commands/ai')
-const { randomBytes } = require('crypto')
+const { v4: uuidv4 } = require('uuid')
 
 const app = express()
 const server = http.createServer(app)
@@ -41,7 +41,7 @@ async function startBot() {
     if (!msg.message || msg.key.fromMe) return
     const sender = msg.key.remoteJid
     const text = msg.message.conversation || msg.message.extendedTextMessage?.text || ''
-    const id = randomBytes(4).toString('hex')
+    const id = uuidv4()
     const response = await aiCommand(text, id)
     await sock.sendMessage(sender, { text: response })
   })
