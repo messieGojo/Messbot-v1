@@ -79,7 +79,7 @@
       transition: background 0.3s;
       margin-top: 1rem;
     }
-    button:hover {
+    button:hover:not(:disabled) {
       background: var(--primary-dark);
     }
     button:disabled {
@@ -104,6 +104,7 @@
       margin-top: 1rem;
       color: var(--text-secondary);
       min-height: 24px;
+      word-wrap: break-word;
     }
     .qr-instructions {
       margin-top: 1rem;
@@ -143,16 +144,30 @@
     const submitBtn = document.getElementById('submitBtn')
     const numberInput = document.getElementById('number')
 
+    let isWaitingCode = false
+
+    function resetUI() {
+      pairingCodeBox.style.display = 'none'
+      pairingCodeBox.textContent = ''
+      qrInstructions.style.display = 'none'
+      statusText.textContent = 'Prêt à se connecter'
+      submitBtn.disabled = false
+      isWaitingCode = false
+    }
+
     function sendNumber() {
       const number = numberInput.value.trim()
       if (!number || !/^\d+$/.test(number)) {
         statusText.textContent = '❌ Numéro invalide (chiffres uniquement)'
         return
       }
+      if(isWaitingCode) return 
+
       submitBtn.disabled = true
       statusText.textContent = 'Génération du code...'
       pairingCodeBox.style.display = 'none'
       qrInstructions.style.display = 'none'
+      isWaitingCode = true
       socket.emit('admin-number', number)
     }
 
@@ -172,22 +187,24 @@
       statusText.textContent = '✅ Connexion WhatsApp établie'
       qrInstructions.style.display = 'none'
       submitBtn.disabled = false
+      isWaitingCode = false
     })
 
     socket.on('pairing-error', (error) => {
       statusText.textContent = `❌ Erreur : ${error}`
-      submitBtn.disabled = false
-      pairingCodeBox.style.display = 'none'
-      qrInstructions.style.display = 'none'
+      resetUI()
     })
 
     pairingCodeBox.addEventListener('click', () => {
-      navigator.clipboard.writeText(pairingCodeBox.textContent)
-      statusText.textContent = 'Code copié !'
+      if(pairingCodeBox.textContent){
+        navigator.clipboard.writeText(pairingCodeBox.textContent)
+        statusText.textContent = 'Code copié !'
+      }
     })
 
     window.onload = () => {
       numberInput.focus()
+      resetUI()
     }
   </script>
 </body>
