@@ -124,20 +124,15 @@
 <body>
   <div class="container">
     <h1>Connexion MessBot</h1>
-    
     <div class="input-group">
       <label for="number">Numéro WhatsApp (sans +)</label>
       <input type="tel" id="number" placeholder="Ex: 33612345678" pattern="[0-9]*" inputmode="numeric" autocomplete="off" />
     </div>
-    
     <button id="submitBtn" onclick="sendNumber()">Obtenir le code d'appairage</button>
-    
     <div id="pairingCode" class="code-box" title="Cliquez pour copier le code"></div>
-    
     <div class="status" id="statusText">Prêt à se connecter</div>
     <div class="qr-instructions" id="qrInstructions">Scannez le QR code affiché dans la console du serveur</div>
   </div>
-
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io()
@@ -160,16 +155,17 @@
       socket.emit('admin-number', number)
     }
 
-    socket.on('pairing-code', (data) => {
-      if (data && data.code) {
+    socket.on('pairing-code', (code) => {
+      if (code) {
         pairingCodeBox.style.display = 'block'
-        pairingCodeBox.textContent = data.code
+        pairingCodeBox.textContent = code
         statusText.textContent = 'Code généré avec succès. Cliquez pour copier.'
         qrInstructions.style.display = 'block'
-        navigator.clipboard.writeText(data.code).then(() => {
+        navigator.clipboard.writeText(code).then(() => {
           statusText.textContent = 'Code copié dans le presse-papier !'
         }).catch(() => {
-  })
+          statusText.textContent = 'Code affiché mais non copié'
+        })
       }
     })
 
@@ -191,7 +187,7 @@
       statusText.textContent = 'Code copié !'
     })
 
-   window.onload = () => {
+    window.onload = () => {
       numberInput.focus()
     }
   </script>
