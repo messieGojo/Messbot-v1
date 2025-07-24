@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MessBot</title>
+  <title>MessBot - Connexion</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     :root {
@@ -133,6 +133,7 @@
     <div class="status" id="statusText">Prêt à se connecter</div>
     <div class="qr-instructions" id="qrInstructions">Scannez le QR code affiché dans la console du serveur</div>
   </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io()
@@ -163,9 +164,7 @@
         qrInstructions.style.display = 'block'
         navigator.clipboard.writeText(code).then(() => {
           statusText.textContent = 'Code copié dans le presse-papier !'
-        }).catch(() => {
-          statusText.textContent = 'Code affiché mais non copié'
-        })
+        }).catch(() => {})
       }
     })
 
