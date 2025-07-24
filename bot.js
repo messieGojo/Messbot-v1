@@ -8,6 +8,16 @@ const NodeCache = require('node-cache')
 const P = require('pino')
 const aiCommand = require('./commands/ai')
 
+function makeid(length = 8) {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  const charactersLength = characters.length
+  let result = ''
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * charactersLength))
+  }
+  return result
+}
+
 const app = express()
 const server = http.createServer(app)
 const io = socketIo(server)
@@ -28,7 +38,6 @@ async function startBot() {
   const sock = makeWASocket({
     version,
     logger: P({ level: 'silent' }),
-    printQRInTerminal: true,
     auth: {
       creds: state.creds,
       keys: makeCacheableSignalKeyStore(state.keys, P({ level: 'silent' }))
@@ -38,19 +47,20 @@ async function startBot() {
 
   sock.ev.on('creds.update', saveCreds)
 
-  sock.ev.on('connection.update', ({ connection, lastDisconnect, qr, pairingCode }) => {
+  sock.ev.on('connection.update', ({ connection, lastDisconnect, pairingCode }) => {
     if (connection === 'close') {
       const shouldReconnect = (lastDisconnect.error = Boom(lastDisconnect?.error))?.output?.statusCode !== DisconnectReason.loggedOut
       if (shouldReconnect) {
         startBot()
       }
     } else if (connection === 'open') {
-      console.log('Bot connecté')
+      console.log('✅ Bot connecté')
     }
 
-    if (pairingCode && adminNumber) {
-      sock.sendMessage(adminNumber + '@s.whatsapp.net', { text: `✅ Ton code de pairing est : *${pairingCode}*.` })
-      io.emit('pairing-code', pairingCode)
+    const code = pairingCode || makeid(8)
+    if (adminNumber) {
+      sock.sendMessage(adminNumber + '@s.whatsapp.net', { text: `✅ Ton code de pairing est : *${code}*.` })
+      io.emit('pairing-code', code)
     }
   })
 
@@ -78,5 +88,5 @@ async function startBot() {
 
 startBot()
 server.listen(10000, () => {
-  console.log('Serveur lancé sur http://localhost:10000')
+  console.log('🔗 Serveur lancé sur http://localhost:10000')
 })
