@@ -22,3 +22,5 @@ Thumbs.db
 /public/build/
 
 config.js
+
+auth_info.json
