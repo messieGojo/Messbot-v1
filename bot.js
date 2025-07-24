@@ -1,4 +1,4 @@
-const { default: makeWASocket, useSingleFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys')
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys')
 const { Boom } = require('@hapi/boom')
 const fs = require('fs')
 const express = require('express')
@@ -12,9 +12,10 @@ const server = http.createServer(app)
 const io = socketIO(server)
 
 const PORT = process.env.PORT || 3000
-const { state, saveCreds } = useSingleFileAuthState('./auth_info.json')
 
 async function startBot() {
+  const { state, saveCreds } = await useMultiFileAuthState('./auth_info')
+
   const sock = makeWASocket({
     auth: state,
     printQRInTerminal: false,
@@ -23,7 +24,9 @@ async function startBot() {
 
   sock.ev.on('creds.update', saveCreds)
 
-  if (!fs.existsSync('./auth_info.json')) {
+  const authFileExists = fs.existsSync('./auth_info/creds.json')
+
+  if (!authFileExists) {
     const code = await sock.requestPairingCode('243844899201@s.whatsapp.net')
     console.log(`✅ Ton code de pairing est : *${code}*.`)
     io.emit('pairing-code', code)
