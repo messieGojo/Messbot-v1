@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Connexion du Bot WhatsApp</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #0f0f0f;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    h1 {
+      color: #0ff;
+      margin-bottom: 30px;
+    }
+
+    #pairingCodeBox {
+      background: #1a1a1a;
+      border: 2px dashed #0ff;
+      padding: 20px 40px;
+      font-size: 2rem;
+      letter-spacing: 3px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+
+    button {
+      background: #0ff;
+      border: none;
+      padding: 10px 20px;
+      color: #000;
+      font-size: 1rem;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #00cccc;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Code de Pairing WhatsApp</h1>
+  <div id="pairingCodeBox">En attente...</div>
+  <button onclick="copyCode()">Copier le code</button>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io()
+    const codeBox = document.getElementById('pairingCodeBox')
+
+    socket.on('pairing-code', (code) => {
+      codeBox.textContent = code
+    })
+
+    function copyCode() {
+      const code = codeBox.textContent
+      navigator.clipboard.writeText(code).then(() => {
+        alert('Code copié dans le presse-papiers !')
+      })
+    }
+  </script>
+</body>
+</html>
