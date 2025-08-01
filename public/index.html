@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pairing WhatsApp</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f7f8fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            color: #3b4a54;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            width: 340px;
+            padding: 20px;
+            text-align: center;
+        }
+        .code-display {
+            font-size: 24px;
+            letter-spacing: 3px;
+            margin: 25px 0;
+            padding: 15px;
+            background: #f0f2f5;
+            border-radius: 8px;
+            font-weight: 600;
+            color: #25D366;
+        }
+        .instructions {
+            font-size: 14px;
+            color: #667781;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+        .error-message {
+            color: #ff3b30;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        .btn {
+            background: #25D366;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 24px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+        }
+        .btn-refresh {
+            background: transparent;
+            color: #25D366;
+            text-decoration: underline;
+            border: none;
+            margin-top: 15px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .divider {
+            border-top: 1px solid #e9edef;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Saisir le code</h2>
+        
+        <div class="instructions">
+            Pour obtenir votre code : accédez à WhatsApp sur Internet ou sur un autre appareil, 
+            puis cliquez sur <strong>Connecter avec un numéro de téléphone</strong>.
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div class="code-display" id="pairCode">BRLX - R7HU</div>
+        
+        <div class="error-message" id="errorMessage">
+            Impossible de connecter l'appareil
+        </div>
+        
+        <button class="btn" id="confirmBtn">OK</button>
+        <button class="btn-refresh" id="refreshBtn">Obtenir un nouveau code</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const pairCodeElement = document.getElementById('pairCode');
+        const errorElement = document.getElementById('errorMessage');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const confirmBtn = document.getElementById('confirmBtn');
+
+        // Recevoir le code du serveur
+        socket.on('pairing-code', (code) => {
+            const formattedCode = code.match(/.{1,4}/g).join(' - ');
+            pairCodeElement.textContent = formattedCode;
+            errorElement.style.display = 'none';
+        });
+
+        // Gestion des erreurs
+        socket.on('pairing-error', (message) => {
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        });
+
+        // Bouton rafraîchir
+        refreshBtn.addEventListener('click', () => {
+            socket.emit('request-new-code');
+            errorElement.style.display = 'none';
+        });
+
+        // Bouton OK
+        confirmBtn.addEventListener('click', () => {
+            alert('Vérifiez que le numéro de téléphone est correct sur votre appareil');
+        });
+
+        // Connexion initiale
+        socket.on('connect', () => {
+            console.log('Connecté au serveur de pairing');
+        });
+    </script>
+</body>
+</html>
