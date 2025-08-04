@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Connexion WhatsApp - CyberCodex</title>
+  <style>
+    body {
+      background-color: #0e0e0e;
+      color: #ffffff;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    h1 {
+      color: #00ffaa;
+      margin-bottom: 20px;
+    }
+
+    input, button {
+      padding: 10px;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: none;
+      margin-top: 10px;
+    }
+
+    input {
+      width: 250px;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    button {
+      background-color: #00ffaa;
+      color: #000;
+      cursor: pointer;
+    }
+
+    #code {
+      margin-top: 20px;
+      font-size: 1.2rem;
+      color: #00ffcc;
+      word-break: break-all;
+    }
+
+    #status {
+      margin-top: 10px;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <h1>Connexion WhatsApp</h1>
+
+  <input type="text" id="phone" placeholder="Numéro WhatsApp +243..." />
+  <button onclick="generateCode()">Générer le code</button>
+
+  <div id="status">État : En attente</div>
+  <div id="code"></div>
+
+  <script>
+    async function generateCode() {
+      const phone = document.getElementById('phone').value
+      if (!phone) return alert('Entrez un numéro de téléphone valide.')
+
+      document.getElementById('status').textContent = 'État : Génération du code...'
+
+      try {
+        const res = await fetch('/generate-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone })
+        })
+
+        const data = await res.json()
+        document.getElementById('status').textContent = 'État : ' + data.message
+      } catch (e) {
+        document.getElementById('status').textContent = 'Erreur lors de la requête.'
+      }
+    }
+
+    setInterval(async () => {
+      const res = await fetch('/status')
+      const data = await res.json()
+
+      document.getElementById('status').textContent = `État : ${data.message}`
+
+      if (data.status === 'code_ready') {
+        document.getElementById('code').textContent = 'Code : ' + data.code
+      }
+    }, 1500)
+  </script>
+</body>
+</html>
