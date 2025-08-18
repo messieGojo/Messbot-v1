@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Générateur de Code WhatsApp</title>
+    <style>
+        :root {
+            --background-color: #121212;
+            --surface-color: #1e1e1e;
+            --primary-color: #00a884;
+            --text-color: #e1e1e1;
+            --error-color: #f44336;
+            --success-color: #4caf50;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            padding: 2rem;
+            background-color: var(--surface-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+        }
+
+        p {
+            margin-bottom: 2rem;
+            opacity: 0.8;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .phone-input {
+            width: 100%;
+            padding: 12px;
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: var(--text-color);
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        
+        .phone-input::placeholder {
+            color: #888;
+        }
+
+        .phone-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .submit-button {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary-color);
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .submit-button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+
+        .submit-button:not(:disabled):hover {
+            background-color: #007d64;
+        }
+
+        .status-box {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 4px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .status-box.info { background-color: #2196f330; border: 1px solid #2196f3; }
+        .status-box.success { background-color: #4caf5030; border: 1px solid #4caf50; }
+        .status-box.error { background-color: #f4433630; border: 1px solid #f44336; }
+
+        .code-display {
+            font-size: 2.5rem;
+            font-weight: bold;
+            letter-spacing: 8px;
+            color: var(--primary-color);
+            margin: 1rem 0;
+            user-select: all;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Pairage WhatsApp</h1>
+        <p>Entrez votre numéro de téléphone (sans le '+' ou '00') pour recevoir un code de pairage.</p>
+
+        <form id="phone-form">
+            <div class="form-group">
+                <input type="tel" id="phone-input" class="phone-input" placeholder="Ex: 33612345678" required>
+            </div>
+            <button type="submit" id="submit-button" class="submit-button">Générer le Code</button>
+        </form>
+
+        <div id="status-box" class="status-box">
+            <span id="status-message"></span>
+            <div id="code-display" class="code-display"></div>
+        </div>
+    </div>
+
+    <script>
+        const phoneForm = document.getElementById('phone-form');
+        const phoneInput = document.getElementById('phone-input');
+        const submitButton = document.getElementById('submit-button');
+        const statusBox = document.getElementById('status-box');
+        const statusMessage = document.getElementById('status-message');
+        const codeDisplay = document.getElementById('code-display');
+
+        let pollingInterval;
+
+        function updateStatus(message, type, code = null) {
+            statusBox.style.display = 'block';
+            statusBox.className = `status-box ${type}`;
+            statusMessage.textContent = message;
+            
+            if (code) {
+                // Formate le code toutes les 4 chiffres pour lisibilité
+                codeDisplay.textContent = code.replace(/(\d{4})(?=\d)/g, '$1-');
+            } else {
+                codeDisplay.textContent = '';
+            }
+        }
+
+        async function checkStatus() {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+
+                if (data.status === 'code_ready' && data.code) {
+                    updateStatus(data.message, 'success', data.code);
+                    submitButton.disabled = false;
+                    clearInterval(pollingInterval);
+                } else if (data.status === 'connected') {
+                    updateStatus(data.message, 'success');
+                    submitButton.disabled = false;
+                    clearInterval(pollingInterval);
+                } else if (data.status === 'disconnected' || data.status === 'error') {
+                    if (data.message) updateStatus(data.message, 'error');
+                    submitButton.disabled = false;
+                    clearInterval(pollingInterval);
+                } else if (data.status === 'pairing' || data.status === 'starting') {
+                    updateStatus(data.message, 'info');
+                }
+
+            } catch (error) {
+                updateStatus('Impossible de joindre le serveur.', 'error');
+                submitButton.disabled = false;
+                clearInterval(pollingInterval);
+            }
+        }
+
+        phoneForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            
+            submitButton.disabled = true;
+            codeDisplay.textContent = '';
+            updateStatus('Initialisation...', 'info');
+            
+            if (pollingInterval) clearInterval(pollingInterval);
+            pollingInterval = setInterval(checkStatus, 2500);
+
+            try {
+                const response = await fetch('/generate-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: phoneInput.value })
+                });
+                
+                const data = await response.json();
+
+                if (!response.ok) {
+                    updateStatus(data.message || 'Une erreur est survenue.', 'error');
+                    submitButton.disabled = false;
+                    clearInterval(pollingInterval);
+                }
+
+            } catch (error) {
+                updateStatus('Erreur de connexion au serveur.', 'error');
+                submitButton.disabled = false;
+                clearInterval(pollingInterval);
+            }
+        });
+    </script>
+</body>
+</html>
