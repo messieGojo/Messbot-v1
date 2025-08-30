@@ -3,310 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MessBot-v1 WhatsApp</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <title>MessBot</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: 'Orbitron', sans-serif;
-      background: linear-gradient(135deg, #0d1117, #161b22);
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      min-height: 100vh;
-      padding: 20px;
-    }
-
-    h1 {
-      color: #00d9ff;
-      margin-bottom: 20px;
-      text-shadow: 0 0 10px #00d9ff;
-    }
-
-    .container {
-      width: 100%;
-      max-width: 700px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 20px;
-      padding: 25px;
-      box-shadow: 0 0 25px rgba(0, 217, 255, 0.3);
-      border: 1px solid rgba(0, 217, 255, 0.2);
-    }
-
-    section {
-      margin-bottom: 20px;
-      padding: 20px;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.05);
-      border-left: 5px solid #00d9ff;
-      border-right: 5px solid #00d9ff;
-      transition: transform 0.3s ease;
-    }
-
-    section:hover {
-      transform: scale(1.03);
-    }
-
-    .status-container {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 15px;
-      padding: 10px;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.05);
-    }
-
-    .status-indicator {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      margin-right: 10px;
-    }
-
-    .status-connected {
-      background: #25D366;
-    }
-
-    .status-connecting {
-      background: #FFBD03;
-    }
-
-    .status-disconnected {
-      background: #FF4B4B;
-    }
-
-    form label {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 14px;
-      color: #a8dadc;
-    }
-
-    form input {
-      width: 100%;
-      padding: 12px;
-      margin-bottom: 15px;
-      border: none;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.1);
-      color: #fff;
-      font-size: 16px;
-      outline: none;
-      transition: background 0.3s ease;
-    }
-
-    form input:focus {
-      background: rgba(255, 255, 255, 0.2);
-    }
-
-    .input-with-button {
-      display: flex;
-    }
-
-    .input-with-button input {
-      flex: 1;
-      border-radius: 8px 0 0 8px;
-    }
-
-    .input-with-button button {
-      border-radius: 0 8px 8px 0;
-      padding: 0 20px;
-      font-size: 16px;
-      background: #00d9ff;
-      color: #0d1117;
-      border: none;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .input-with-button button:hover {
-      background: #00b3cc;
-      transform: scale(1.05);
-    }
-
-    .pairing-code {
-      font-size: 32px;
-      font-weight: bold;
-      letter-spacing: 5px;
-      color: #25D366;
-      margin: 15px 0;
-      padding: 15px;
-      border: 2px dashed #25D366;
-      border-radius: 8px;
-      background: rgba(37, 211, 102, 0.1);
-    }
-
-    .error-message {
-      color: #FF4B4B;
-      padding: 12px;
-      background: rgba(255, 75, 75, 0.1);
-      border-radius: 8px;
-      margin-top: 15px;
-      border-left: 4px solid #FF4B4B;
-    }
-
-    .success-message {
-      color: #25D366;
-      padding: 12px;
-      background: rgba(37, 211, 102, 0.1);
-      border-radius: 8px;
-      margin-top: 15px;
-      border-left: 4px solid #25D366;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    .instructions {
-      margin-top: 25px;
-      padding: 15px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 8px;
-      font-size: 14px;
-      text-align: left;
-    }
-
-    .instructions h3 {
-      margin-bottom: 10px;
-      color: #00d9ff;
-      text-align: center;
-    }
-
-    .instructions ol {
-      padding-left: 20px;
-    }
-
-    .instructions li {
-      margin-bottom: 8px;
-    }
-
-    .footer {
-      text-align: center;
-      padding: 15px;
-      color: #666;
-      font-size: 12px;
-      margin-top: 20px;
-    }
-
-    .whatsapp-icon {
-      color: #25D366;
-      margin-right: 8px;
-    }
+    body { font-family: Arial, sans-serif; background: #121212; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    h1 { margin-bottom: 20px; }
+    input { padding: 10px; font-size: 16px; border-radius: 5px; border: none; margin-right: 10px; }
+    button { padding: 10px 15px; font-size: 16px; border-radius: 5px; border: none; background: #1e88e5; color: #fff; cursor: pointer; }
+    #status { margin-top: 20px; font-weight: bold; }
+    #code { margin-top: 10px; font-size: 18px; color: #00ff00; }
   </style>
 </head>
 <body>
-  <h1>MessBot-v1 WhatsApp</h1>
-  <div class="container">
-    <section>
-      <div class="status-container">
-        <div class="status-indicator status-connecting"></div>
-        <span id="status-text">Connexion en cours...</span>
-      </div>
-
-      <form id="pairing-form">
-        <label for="phone-number"><i class="fas fa-phone whatsapp-icon"></i>Numéro de téléphone:</label>
-        <div class="input-with-button">
-          <input type="text" id="phone-number" placeholder="Ex: +33612345678">
-          <button type="submit"><i class="fas fa-bolt"></i> Générer</button>
-        </div>
-      </form>
-
-      <div id="error-container" class="error-message hidden"></div>
-      <div id="success-container" class="success-message hidden"></div>
-
-      <div id="pairing-container" class="hidden">
-        <h3><i class="fas fa-code whatsapp-icon"></i>Code d'appairage</h3>
-        <div class="pairing-code" id="pairing-code"></div>
-        <p>Entrez ce code dans WhatsApp &gt; Paramètres &gt; Appareils connectés &gt; Associer un appareil</p>
-      </div>
-    </section>
-
-    <section class="instructions">
-      <h3><i class="fas fa-info-circle whatsapp-icon"></i>Instructions:</h3>
-      <ol>
-        <li>Entrez votre numéro de téléphone avec l'indicatif pays</li>
-        <li>Cliquez sur le bouton pour générer un code d'appairage</li>
-        <li>Utilisez le code pour connecter votre compte WhatsApp</li>
-        <li>Le bot répondra automatiquement aux messages reçus</li>
-      </ol>
-    </section>
+  <h1>MessBot WhatsApp</h1>
+  <div>
+    <input type="text" id="phone" placeholder="Numéro avec indicatif">
+    <button id="generate">Générer Code</button>
   </div>
-
-  <div class="footer">
-    <p>MessBot-v1</p>
-  </div>
-
+  <div id="status">Statut : ⌛ Non connecté</div>
+  <div id="code"></div>
   <script>
-    const socket = io();
-    const statusText = document.getElementById('status-text');
-    const statusIndicator = document.querySelector('.status-indicator');
-    const phoneInput = document.getElementById('phone-number');
-    const errorContainer = document.getElementById('error-container');
-    const successContainer = document.getElementById('success-container');
-    const pairingContainer = document.getElementById('pairing-container');
-    const pairingCodeElement = document.getElementById('pairing-code');
-    const pairingForm = document.getElementById('pairing-form');
+    const socket = io()
+    const statusEl = document.getElementById('status')
+    const codeEl = document.getElementById('code')
+    const generateBtn = document.getElementById('generate')
+    const phoneInput = document.getElementById('phone')
 
-    socket.on('status', (status) => {
-      statusText.textContent = status;
-      if (status.includes('Prêt')) {
-        statusIndicator.className = 'status-indicator status-connected';
-      } else if (status.includes('Connexion')) {
-        statusIndicator.className = 'status-indicator status-connecting';
-      } else {
-        statusIndicator.className = 'status-indicator status-disconnected';
-      }
-    });
+    socket.on('status', status => {
+      statusEl.textContent = 'Statut : ' + status
+    })
 
-    socket.on('pairing-code', (code) => {
-      hideAllMessages();
-      pairingCodeElement.textContent = code;
-      pairingContainer.classList.remove('hidden');
-      successContainer.textContent = 'Code généré avec succès!';
-      successContainer.classList.remove('hidden');
-    });
+    socket.on('pairing-code', code => {
+      codeEl.textContent = 'Pairing Code : ' + code
+    })
 
-    socket.on('pairing-error', (error) => {
-      hideAllMessages();
-      errorContainer.textContent = error;
-      errorContainer.classList.remove('hidden');
-    });
+    socket.on('pairing-error', msg => {
+      codeEl.textContent = msg
+    })
 
-    pairingForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const phoneNumber = phoneInput.value.trim();
-      if (!phoneNumber) {
-        showError('Veuillez entrer un numéro de téléphone');
-        return;
-      }
-      hideAllMessages();
-      pairingContainer.classList.add('hidden');
-      socket.emit('generate-code', phoneNumber);
-    });
-
-    function showError(message) {
-      hideAllMessages();
-      errorContainer.textContent = message;
-      errorContainer.classList.remove('hidden');
-    }
-
-    function hideAllMessages() {
-      errorContainer.classList.add('hidden');
-      successContainer.classList.add('hidden');
-    }
-
-    hideAllMessages();
+    generateBtn.addEventListener('click', () => {
+      const number = phoneInput.value
+      socket.emit('generate-code', number)
+    })
   </script>
 </body>
 </html>
