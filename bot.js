@@ -53,6 +53,10 @@ async function startSock() {
     
     sock.ev.on('creds.update', saveCreds)
     
+    if (!sock.authState.creds.registered) {
+      io.emit('status', '⌛ En attente du pairing code')
+    }
+    
     sock.ev.on('connection.update', async (u) => {
       const { connection, lastDisconnect } = u
       console.log('Connection update:', connection)
