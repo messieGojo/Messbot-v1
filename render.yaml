@@ -2,6 +2,9 @@ services:
   - type: web
     name: whatsapp-bot
     env: node
+    region: oregon
+    plan: free
+    branch: main
     buildCommand: npm install
     startCommand: node bot.js
     envVars:
