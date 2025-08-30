@@ -21,89 +21,181 @@ let sock = null
 let starting = false
 let pending = []
 let connected = false
+let reconnectAttempts = 0
+const MAX_RECONNECT_ATTEMPTS = 5
 
 function cleanNumber(n) {
   return String(n || '').replace(/[^\d]/g, '')
 }
 
 function canRequest() {
-  return sock && sock.ws && sock.ws.readyState === 1
+  return sock && sock.ws && sock.ws.readyState === 1 && connected
 }
 
 async function startSock() {
   if (starting) return
   starting = true
-  const { state, saveCreds } = await useMultiFileAuthState('auth')
-  const { version } = await fetchLatestBaileysVersion()
-  sock = makeWASocket({
-    version,
-    logger: pino({ level: 'silent' }),
-    printQRInTerminal: false,
-    auth: { creds: state.creds, keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' })) },
-    browser: ['VolTah-Bot', 'Chrome', '1.0.0']
-  })
-  sock.ev.on('creds.update', saveCreds)
-  sock.ev.on('connection.update', async (u) => {
-    const { connection, lastDisconnect } = u
-    if (connection === 'open') {
-      connected = true
-      starting = false
-      if (pending.length) {
-        const queue = [...pending]
-        pending = []
-        for (const item of queue) {
-          try {
-            const code = await sock.requestPairingCode(item.number)
-            io.to(item.socketId).emit('pairing-code', code)
-          } catch (e) {
-            io.to(item.socketId).emit('pairing-error', '❌ Échec de génération du code.')
+  reconnectAttempts++
+  
+  try {
+    const { state, saveCreds } = await useMultiFileAuthState('auth')
+    const { version } = await fetchLatestBaileysVersion()
+    
+    sock = makeWASocket({
+      version,
+      logger: pino({ level: 'debug' }), 
+      printQRInTerminal: true, 
+      auth: { 
+        creds: state.creds, 
+        keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' })) 
+      },
+      browser: ['Messbot', 'Chrome', '1.0.0']
+    })
+    
+    sock.ev.on('creds.update', saveCreds)
+    
+    sock.ev.on('connection.update', async (u) => {
+      const { connection, lastDisconnect, qr } = u
+      console.log('Connection update:', connection, qr ? 'QR received' : '')
+      
+      if (qr) {
+        
+        io.emit('qr-code', qr)
+      }
+      
+      if (connection === 'open') {
+        console.log('✅ Connecté avec succès')
+        connected = true
+        starting = false
+        reconnectAttempts = 0
+        io.emit('status', '✅ Prêt')
+        
+        
+        if (pending.length) {
+          const queue = [...pending]
+          pending = []
+          for (const item of queue) {
+            try {
+              const code = await sock.requestPairingCode(item.number)
+              io.to(item.socketId).emit('pairing-code', code)
+            } catch (e) {
+              console.error('Erreur génération code:', e)
+              io.to(item.socketId).emit('pairing-error', '❌ Échec de génération du code: ' + e.message)
+            }
           }
         }
+      } else if (connection === 'close') {
+        connected = false
+        starting = false
+        io.emit('status', ' Déconnecté')
+        
+        const statusCode = lastDisconnect?.error?.output?.statusCode
+        const shouldReconnect = statusCode !== DisconnectReason.loggedOut
+        
+        console.log(`Déconnexion (status: ${statusCode}), reconnexion: ${shouldReconnect}`)
+        
+        if (shouldReconnect && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+          console.log(`Tentative de reconnexion dans 2s... (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`)
+          setTimeout(startSock, 2000)
+        } else {
+          console.log('Arrêt des tentatives de reconnexion')
+          io.emit('status', '❌ Échec de connexion, veuillez redémarrer')
+        }
       }
-    } else if (connection === 'close') {
-      connected = false
-      starting = false
-      const shouldReconnect = !lastDisconnect || lastDisconnect.error?.output?.statusCode !== DisconnectReason.loggedOut
-      if (shouldReconnect) setTimeout(startSock, 1500)
+    })
+    
+    sock.ev.on('messages.upsert', async ({ messages }) => {
+      const msg = messages[0]
+      if (!msg?.message || msg.key.fromMe) return
+      
+      const jid = msg.key.remoteJid
+      if (jid.endsWith('@g.us')) return
+      
+      const text = msg.message.conversation || 
+                   msg.message.extendedTextMessage?.text || 
+                   msg.message.buttonsResponseMessage?.selectedButtonId || ''
+      
+      if (!text) return
+      
+      try {
+          const { aiCommand } = require('./commands/ai')
+        const reply = await aiCommand(text)
+        if (reply) await sock.sendMessage(jid, { text: reply })
+      } catch (error) {
+        console.error('Erreur traitement message AI:', error)
+          await sock.sendMessage(jid, { 
+          text: "Désolé, je rencontre des difficultés techniques. Veuillez réessayer plus tard." 
+        })
+      }
+    })
+    
+      sock.ev.on('connection.update', (update) => {
+      if (update.connection === 'close' && update.lastDisconnect?.error) {
+        console.error('Erreur de connexion:', update.lastDisconnect.error)
+      }
+    })
+    
+  } catch (error) {
+    console.error('Erreur initialisation socket:', error)
+    starting = false
+    connected = false
+    io.emit('status', '❌ Erreur initialisation')
+    
+    
+    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+      setTimeout(startSock, 3000)
     }
-  })
-  sock.ev.on('messages.upsert', async ({ messages }) => {
-    const msg = messages[0]
-    if (!msg?.message || msg.key.fromMe) return
-    const jid = msg.key.remoteJid
-    if (jid.endsWith('@g.us')) return
-    const text = msg.message.conversation || msg.message.extendedTextMessage?.text || ''
-    if (!text) return
-    try {
-      const { aiCommand } = require('./commands/ai')
-      const reply = await aiCommand(text)
-      if (reply) await sock.sendMessage(jid, { text: reply })
-    } catch {}
-  })
+  }
 }
 
 io.on('connection', (socket) => {
-  socket.emit('status', connected ? '✅ Prêt' : '⌛ Connexion en cours…')
+  console.log('Client connecté:', socket.id)
+  socket.emit('status', connected ? '✅ Prêt' : starting ? '⌛ Connexion en cours…' : '❌ Déconnecté')
+  
   socket.on('generate-code', async (raw) => {
     const number = cleanNumber(raw)
     if (!number || number.length < 8) {
       socket.emit('pairing-error', '❌ Numéro invalide.')
       return
     }
-    if (!sock) startSock()
+    
+    if (!sock) {
+      startSock()
+      pending.push({ socketId: socket.id, number })
+      socket.emit('status', '⌛ Initialisation en cours…')
+      return
+    }
+    
     if (!canRequest()) {
       pending.push({ socketId: socket.id, number })
       socket.emit('status', '⌛ Connexion en cours… code à venir.')
       return
     }
+    
     try {
       const code = await sock.requestPairingCode(number)
       socket.emit('pairing-code', code)
     } catch (e) {
-      socket.emit('pairing-error', '❌ Échec de génération du code.')
+      console.error('Erreur génération code pairing:', e)
+      socket.emit('pairing-error', '❌ Échec de génération du code: ' + (e.message || 'Erreur inconnue'))
     }
+  })
+  
+  socket.on('disconnect', () => {
+    console.log('Client déconnecté:', socket.id)
   })
 })
 
+
+process.on('SIGINT', () => {
+  console.log('Arrêt en cours...')
+  if (sock) {
+    sock.ws.close()
+  }
+  process.exit(0)
+})
+
 startSock()
-server.listen(process.env.PORT || 3000, () => {})
+server.listen(process.env.PORT || 3000, () => {
+  console.log(`Serveur démarré sur le port ${process.env.PORT || 3000}`)
+})
