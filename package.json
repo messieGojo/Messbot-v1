@@ -1,19 +1,26 @@
 {
-  "name": "messbot",
+  "name": "messbot-v1",
   "version": "1.0.0",
-  "description": "Bot WhatsApp avec pairing code et IA",
+  "description": "WhatsApp Bot avec fonctionnalité de pairing code",
   "main": "bot.js",
-  "type": "commonjs",
   "scripts": {
-    "start": "node bot.js"
+    "start": "node bot.js",
+    "dev": "nodemon bot.js"
   },
   "dependencies": {
-    "@hapi/boom": "^10.0.0",
-    "@whiskeysockets/baileys": "^6.6.0",
-    "express": "^4.19.2",
-    "socket.io": "^4.7.5",
-    "uuid": "^9.0.0",
-    "pino": "^8.17.0",
-    "node-cache": "^5.1.2"
-  }
+    "@whiskeysockets/baileys": "^6.4.0",
+    "express": "^4.18.2",
+    "pino": "^8.15.0",
+    "socket.io": "^4.7.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "whatsapp",
+    "bot",
+    "api"
+  ],
+  "author": "messie osango",
+  "license": "MIT"
 }
