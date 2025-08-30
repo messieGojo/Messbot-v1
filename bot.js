@@ -43,8 +43,7 @@ async function startSock() {
     
     sock = makeWASocket({
       version,
-      logger: pino({ level: 'debug' }), 
-      printQRInTerminal: true, 
+      logger: pino({ level: 'silent' }),
       auth: { 
         creds: state.creds, 
         keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' })) 
@@ -59,7 +58,6 @@ async function startSock() {
       console.log('Connection update:', connection, qr ? 'QR received' : '')
       
       if (qr) {
-        
         io.emit('qr-code', qr)
       }
       
@@ -69,7 +67,6 @@ async function startSock() {
         starting = false
         reconnectAttempts = 0
         io.emit('status', '✅ Prêt')
-        
         
         if (pending.length) {
           const queue = [...pending]
@@ -118,20 +115,14 @@ async function startSock() {
       if (!text) return
       
       try {
-          const { aiCommand } = require('./commands/ai')
+        const { aiCommand } = require('./commands/ai')
         const reply = await aiCommand(text)
         if (reply) await sock.sendMessage(jid, { text: reply })
       } catch (error) {
         console.error('Erreur traitement message AI:', error)
-          await sock.sendMessage(jid, { 
+        await sock.sendMessage(jid, { 
           text: "Désolé, je rencontre des difficultés techniques. Veuillez réessayer plus tard." 
         })
-      }
-    })
-    
-      sock.ev.on('connection.update', (update) => {
-      if (update.connection === 'close' && update.lastDisconnect?.error) {
-        console.error('Erreur de connexion:', update.lastDisconnect.error)
       }
     })
     
@@ -140,7 +131,6 @@ async function startSock() {
     starting = false
     connected = false
     io.emit('status', '❌ Erreur initialisation')
-    
     
     if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
       setTimeout(startSock, 3000)
@@ -186,7 +176,6 @@ io.on('connection', (socket) => {
   })
 })
 
-
 process.on('SIGINT', () => {
   console.log('Arrêt en cours...')
   if (sock) {
@@ -196,6 +185,6 @@ process.on('SIGINT', () => {
 })
 
 startSock()
-server.listen(process.env.PORT || 3000, () => {
-  console.log(`Serveur démarré sur le port ${process.env.PORT || 3000}`)
+server.listen(process.env.PORT || 10000, () => {
+  console.log(`Serveur démarré sur le port ${process.env.PORT || 10000}`)
 })
