@@ -48,18 +48,14 @@ async function startSock() {
         creds: state.creds, 
         keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' })) 
       },
-      browser: ['Messbot', 'Chrome', '1.0.0']
+      browser: ['MessBot', 'Chrome', '1.0.0']
     })
     
     sock.ev.on('creds.update', saveCreds)
     
     sock.ev.on('connection.update', async (u) => {
-      const { connection, lastDisconnect, qr } = u
-      console.log('Connection update:', connection, qr ? 'QR received' : '')
-      
-      if (qr) {
-        io.emit('qr-code', qr)
-      }
+      const { connection, lastDisconnect } = u
+      console.log('Connection update:', connection)
       
       if (connection === 'open') {
         console.log('✅ Connecté avec succès')
@@ -84,7 +80,7 @@ async function startSock() {
       } else if (connection === 'close') {
         connected = false
         starting = false
-        io.emit('status', ' Déconnecté')
+        io.emit('status', '🔌 Déconnecté')
         
         const statusCode = lastDisconnect?.error?.output?.statusCode
         const shouldReconnect = statusCode !== DisconnectReason.loggedOut
