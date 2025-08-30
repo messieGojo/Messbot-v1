@@ -3,7 +3,6 @@ const pino = require('pino');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const mongoose = require('mongoose');
 
 const app = express();
 const server = http.createServer(app);
@@ -11,8 +10,6 @@ const io = new Server(server, { cors: { origin: '*' } });
 
 app.use(express.static('public'));
 app.use(express.json());
-
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 
 let sock = null;
 let starting = false;
@@ -95,9 +92,7 @@ async function startSock() {
         const { aiCommand } = require('./commands/ai');
         const reply = await aiCommand(text);
         if (reply) await sock.sendMessage(jid, { text: reply });
-      } catch (e) {
-        console.error('Erreur AI:', e);
-      }
+      } catch {}
     });
 
   } catch (e) {
