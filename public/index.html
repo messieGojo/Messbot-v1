@@ -11,7 +11,6 @@
         * {
             box-sizing: border-box;
         }
-
         body {
             font-family: 'Orbitron', georgia;
             background: #0d1117;
@@ -24,12 +23,10 @@
             flex-direction: column;
             text-align: center;
         }
-
         h1 {
             color: skyblue;
             margin: 20px 0;
         }
-
         .container {
             width: 100%;
             max-width: 900px;
@@ -41,7 +38,6 @@
             border: 1px solid rgba(0, 217, 255, 0.2);
             backdrop-filter: blur(5px);
         }
-
         section {
             margin-top: 20px;
             padding: 20px;
@@ -51,11 +47,9 @@
             border-right: 5px solid #00d9ff;
             transition: transform 0.3s ease;
         }
-
         section:hover {
             transform: scale(1.03);
         }
-
         form label {
             display: block;
             text-align: left;
@@ -63,7 +57,6 @@
             font-size: 14px;
             color: #a8dadc;
         }
-
         form input,
         form textarea {
             width: 100%;
@@ -77,17 +70,14 @@
             outline: none;
             transition: background 0.3s ease;
         }
-
         form input:focus,
         form textarea:focus {
             background: rgba(255, 255, 255, 0.2);
         }
-
         form textarea {
             resize: vertical;
             min-height: 100px;
         }
-
         .btn {
             padding: 12px 20px;
             background: #00d9ff;
@@ -100,16 +90,13 @@
             text-decoration: none;
             display: inline-block;
         }
-
         .btn:hover {
             background: #00b3cc;
             transform: scale(1.05);
         }
-
         .whatsapp-link {
             margin-top: 20px;
         }
-
         img {
             max-width: 100%;
             height: 200px;
@@ -120,22 +107,18 @@
             box-shadow: 0 0 3px rgba(0, 217, 255, 0.8);
             transition: transform 0.3s ease;
         }
-
         img:hover {
             transform: scale(1.05);
             box-shadow: 0 0 20px rgba(0, 217, 255, 0.8);
         }
-
         @media (max-width: 768px) {
             body {
                 padding: 10px;
             }
-
             .container {
                 padding: 15px;
             }
         }
-
         .status-container {
             display: flex;
             align-items: center;
@@ -145,41 +128,33 @@
             border-radius: 8px;
             background: rgba(255, 255, 255, 0.05);
         }
-
         .status-indicator {
             width: 12px;
             height: 12px;
             border-radius: 50%;
             margin-right: 10px;
         }
-
         .status-connected {
             background: #25D366;
         }
-
         .status-connecting {
             background: #FFBD03;
         }
-
         .status-disconnected {
             background: #FF4B4B;
         }
-
         .input-with-button {
             display: flex;
         }
-
         .input-with-button input {
             flex: 1;
             border-radius: 8px 0 0 8px;
         }
-
         .input-with-button button {
             border-radius: 0 8px 8px 0;
             padding: 0 20px;
             font-size: 18px;
         }
-
         .pairing-code {
             font-size: 32px;
             font-weight: bold;
@@ -191,7 +166,6 @@
             border-radius: 8px;
             background: rgba(37, 211, 102, 0.1);
         }
-
         .error-message {
             color: #FF4B4B;
             padding: 12px;
@@ -200,7 +174,6 @@
             margin-top: 15px;
             border-left: 4px solid #FF4B4B;
         }
-
         .success-message {
             color: #25D366;
             padding: 12px;
@@ -209,11 +182,9 @@
             margin-top: 15px;
             border-left: 4px solid #25D366;
         }
-
         .hidden {
             display: none;
         }
-
         .instructions {
             margin-top: 25px;
             padding: 15px;
@@ -222,21 +193,17 @@
             font-size: 14px;
             text-align: left;
         }
-
         .instructions h3 {
             margin-bottom: 10px;
             color: #00d9ff;
             text-align: center;
         }
-
         .instructions ol {
             padding-left: 20px;
         }
-
         .instructions li {
             margin-bottom: 8px;
         }
-
         .footer {
             text-align: center;
             padding: 15px;
@@ -244,7 +211,6 @@
             font-size: 12px;
             margin-top: 20px;
         }
-
         .whatsapp-icon {
             color: #25D366;
             margin-right: 8px;
@@ -253,14 +219,12 @@
 </head>
 <body>
     <h1>MessBot-v1 WhatsApp</h1>
-    
     <div class="container">
         <section>
             <div class="status-container">
                 <div class="status-indicator status-connecting"></div>
                 <span id="status-text">Connexion en cours...</span>
             </div>
-            
             <form id="pairing-form">
                 <label for="phone-number"><i class="fas fa-phone whatsapp-icon"></i>Numéro de téléphone:</label>
                 <div class="input-with-button">
@@ -270,17 +234,14 @@
                     </button>
                 </div>
             </form>
-            
             <div id="error-container" class="error-message hidden"></div>
             <div id="success-container" class="success-message hidden"></div>
-            
             <div id="pairing-container" class="hidden">
                 <h3><i class="fas fa-code whatsapp-icon"></i>Code d'appairage</h3>
                 <div class="pairing-code" id="pairing-code"></div>
                 <p>Entrez ce code dans WhatsApp > Paramètres > Appareils connectés > Associer un appareil</p>
             </div>
         </section>
-        
         <section class="instructions">
             <h3><i class="fas fa-info-circle whatsapp-icon"></i>Instructions:</h3>
             <ol>
@@ -291,11 +252,9 @@
             </ol>
         </section>
     </div>
-    
     <div class="footer">
         <p>MessBot-v1</p>
     </div>
-
     <script>
         const socket = io();
         const statusText = document.getElementById('status-text');
@@ -307,10 +266,8 @@
         const pairingContainer = document.getElementById('pairing-container');
         const pairingCodeElement = document.getElementById('pairing-code');
         const pairingForm = document.getElementById('pairing-form');
-        
         socket.on('status', (status) => {
             statusText.textContent = status;
-            
             if (status.includes('Prêt')) {
                 statusIndicator.className = 'status-indicator status-connected';
                 generateBtn.disabled = false;
@@ -322,7 +279,6 @@
                 generateBtn.disabled = true;
             }
         });
-        
         socket.on('pairing-code', (code) => {
             hideAllMessages();
             pairingCodeElement.textContent = code;
@@ -331,14 +287,12 @@
             successContainer.classList.remove('hidden');
             generateBtn.disabled = false;
         });
-        
         socket.on('pairing-error', (error) => {
             hideAllMessages();
             errorContainer.textContent = error;
             errorContainer.classList.remove('hidden');
             generateBtn.disabled = false;
         });
-        
         pairingForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const phoneNumber = phoneInput.value.trim();
@@ -346,26 +300,21 @@
                 showError('Veuillez entrer un numéro de téléphone');
                 return;
             }
-            
             hideAllMessages();
             pairingContainer.classList.add('hidden');
             generateBtn.disabled = true;
-            
             socket.emit('generate-code', phoneNumber);
         });
-        
         function showError(message) {
             hideAllMessages();
             errorContainer.textContent = message;
             errorContainer.classList.remove('hidden');
         }
-        
         function hideAllMessages() {
             errorContainer.classList.add('hidden');
             successContainer.classList.add('hidden');
         }
-        
         hideAllMessages();
-            </script>
+    </script>
 </body>
 </html>
