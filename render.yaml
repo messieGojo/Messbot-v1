@@ -12,3 +12,5 @@ services:
         value: production
       - key: PORT
         value: 3000
+      - key: MONGO_URI
+        value: mongodb+srv://user:password@cluster.mongodb.net/messbot
